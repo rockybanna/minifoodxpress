@@ -1,5 +1,4 @@
-import { supabase } from "./config.js"
-
+import { supabase } from "./supabase-client.js"
 /* ===============================
    AUTH
 ================================ */
