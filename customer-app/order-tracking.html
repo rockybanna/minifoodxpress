@@ -56,6 +56,10 @@ background:#f0f0f0;
 border-radius:5px;
 }
 
+.active{
+background:#d4edda !important;
+}
+
 </style>
 
 </head>
@@ -100,6 +104,16 @@ const orderAmountEl = document.getElementById("orderAmount")
 const orderIdEl = document.getElementById("orderId")
 const timeline = document.getElementById("timeline")
 
+const steps = [
+"pending",
+"accepted",
+"preparing",
+"ready",
+"picked_up",
+"out_for_delivery",
+"delivered"
+]
+
 async function loadOrder(){
 
 const { data, error } = await supabase
@@ -109,30 +123,29 @@ const { data, error } = await supabase
 .single()
 
 if(error){
-
 console.error(error)
 return
+}
+
+renderOrder(data)
 
 }
 
-orderIdEl.innerText="Order #"+data.id
-orderAmountEl.innerText="Total: ₹"+data.total_amount
-orderStatusEl.innerText="Status: "+data.status
+function renderOrder(order){
+
+orderIdEl.innerText="Order #"+order.id
+orderAmountEl.innerText="Total: ₹"+order.total_amount
+orderStatusEl.innerText="Status: "+order.status
 
 timeline.innerHTML=""
-
-const steps=["pending","accepted","preparing","ready","picked_up","delivered"]
 
 steps.forEach(step=>{
 
 const div=document.createElement("div")
-
 div.innerText=step
 
-if(step===data.status){
-
-div.style.background="#d4edda"
-
+if(step===order.status){
+div.classList.add("active")
 }
 
 timeline.appendChild(div)
@@ -140,6 +153,35 @@ timeline.appendChild(div)
 })
 
 }
+
+/* realtime tracking */
+
+const channel = supabase
+.channel("order-tracking")
+
+.on(
+"postgres_changes",
+{
+event:"UPDATE",
+schema:"public",
+table:"orders"
+},
+(payload)=>{
+
+const updated = payload.new
+
+if(updated.id === orderId){
+
+console.log("Order update:", updated.status)
+
+renderOrder(updated)
+
+}
+
+}
+)
+
+.subscribe()
 
 loadOrder()
 
