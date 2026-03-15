@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Restaurant Menu | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial, sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.menu-container{
+padding:20px;
+}
+
+.menu-item{
+background:white;
+padding:15px;
+margin-bottom:12px;
+border-radius:8px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+.menu-item h3{
+margin:0;
+}
+
+.menu-item p{
+margin:5px 0;
+font-size:14px;
+color:#777;
+}
+
+button{
+padding:8px 12px;
+border:none;
+background:#ff4d4f;
+color:white;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#e63946;
+}
+
+.cart-bar{
+position:fixed;
+bottom:0;
+left:0;
+right:0;
+background:#222;
+color:white;
+display:flex;
+justify-content:space-between;
+padding:12px 20px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="home.html" style="color:white;text-decoration:none">← Back</a>
+
+<h3 id="restaurantName">Restaurant</h3>
+
+<a href="cart.html" style="color:white;text-decoration:none">Cart</a>
+
+</header>
+
+<div class="menu-container" id="menuList">
+
+<!-- menu items load here -->
+
+</div>
+
+<div class="cart-bar">
+
+<span id="cartCount">0 items</span>
+
+<a href="cart.html" style="color:white;text-decoration:none">View Cart</a>
+
+</div>
+
+<script type="module">
+
+import { getMenuItems } from "../shared/js/api.js"
+
+const urlParams = new URLSearchParams(window.location.search)
+const restaurantId = urlParams.get("id")
+
+const container = document.getElementById("menuList")
+
+let cart = JSON.parse(localStorage.getItem("cart") || "[]")
+
+function updateCartBar(){
+
+document.getElementById("cartCount").innerText = cart.length + " items"
+
+}
+
+function addToCart(item){
+
+cart.push(item)
+
+localStorage.setItem("cart", JSON.stringify(cart))
+
+updateCartBar()
+
+}
+
+async function loadMenu(){
+
+const { data, error } = await getMenuItems(restaurantId)
+
+if(error){
+
+console.error(error)
+return
+
+}
+
+container.innerHTML=""
+
+data.forEach(item=>{
+
+const div = document.createElement("div")
+
+div.className="menu-item"
+
+div.innerHTML = `
+
+<div>
+
+<h3>${item.name}</h3>
+
+<p>₹${item.price}</p>
+
+</div>
+
+<button>Add</button>
+
+`
+
+div.querySelector("button").onclick = ()=>{
+
+addToCart(item)
+
+}
+
+container.appendChild(div)
+
+})
+
+}
+
+updateCartBar()
+
+loadMenu()
+
+</script>
+
+</body>
+
+</html>
