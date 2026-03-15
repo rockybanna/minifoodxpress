@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Customers | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+nav{
+background:white;
+padding:10px;
+display:flex;
+gap:15px;
+border-bottom:1px solid #ddd;
+}
+
+nav a{
+text-decoration:none;
+color:#333;
+font-weight:bold;
+}
+
+.container{
+padding:20px;
+}
+
+.table{
+width:100%;
+background:white;
+border-radius:8px;
+overflow:hidden;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+padding:12px;
+border-bottom:1px solid #eee;
+text-align:left;
+}
+
+th{
+background:#fafafa;
+}
+
+button{
+padding:5px 10px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+color:white;
+}
+
+.block{
+background:#dc3545;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h3>Customers</h3>
+
+<a href="dashboard.html" style="color:white;text-decoration:none">Dashboard</a>
+
+</header>
+
+<nav>
+
+<a href="restaurants.html">Restaurants</a> <a href="delivery-partners.html">Delivery Partners</a> <a href="orders.html">Orders</a> <a href="customers.html">Customers</a> <a href="reports.html">Reports</a> <a href="system-settings.html">Settings</a>
+
+</nav>
+
+<div class="container">
+
+<div class="table">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Status</th>
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+<tbody id="customersTable"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const table = document.getElementById("customersTable")
+
+async function loadCustomers(){
+
+const { data, error } = await supabase
+.from("customers")
+.select("*")
+
+if(error){
+console.error(error)
+return
+}
+
+table.innerHTML=""
+
+data.forEach(customer=>{
+
+const row=document.createElement("tr")
+
+row.innerHTML=`
+
+<td>${customer.id}</td>
+<td>${customer.name || "-"}</td>
+<td>${customer.email || "-"}</td>
+<td>${customer.status || "active"}</td>
+
+<td>
+<button class="block">Block</button>
+</td>
+
+`
+
+row.querySelector(".block").onclick = ()=>updateStatus(customer.id,"blocked")
+
+table.appendChild(row)
+
+})
+
+}
+
+async function updateStatus(id,status){
+
+await supabase
+.from("customers")
+.update({status:status})
+.eq("id",id)
+
+loadCustomers()
+
+}
+
+loadCustomers()
+
+</script>
+
+</body>
+
+</html>
