@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Reports | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+nav{
+background:white;
+padding:10px;
+display:flex;
+gap:15px;
+border-bottom:1px solid #ddd;
+}
+
+nav a{
+text-decoration:none;
+color:#333;
+font-weight:bold;
+}
+
+.container{
+padding:20px;
+}
+
+.cards{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+text-align:center;
+}
+
+.card h2{
+margin:10px 0;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h3>Reports</h3>
+
+<a href="dashboard.html" style="color:white;text-decoration:none">Dashboard</a>
+
+</header>
+
+<nav>
+
+<a href="restaurants.html">Restaurants</a> <a href="delivery-partners.html">Delivery Partners</a> <a href="orders.html">Orders</a> <a href="customers.html">Customers</a> <a href="reports.html">Reports</a> <a href="system-settings.html">Settings</a>
+
+</nav>
+
+<div class="container">
+
+<div class="cards">
+
+<div class="card">
+<p>Total Orders</p>
+<h2 id="ordersCount">0</h2>
+</div>
+
+<div class="card">
+<p>Total Revenue</p>
+<h2 id="revenueTotal">₹0</h2>
+</div>
+
+<div class="card">
+<p>Delivered Orders</p>
+<h2 id="deliveredCount">0</h2>
+</div>
+
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+async function loadReports(){
+
+const { data, error } = await supabase
+.from("orders")
+.select("*")
+
+if(error){
+console.error(error)
+return
+}
+
+let totalOrders = data.length
+let revenue = 0
+let delivered = 0
+
+data.forEach(order=>{
+
+revenue += Number(order.total_amount || 0)
+
+if(order.status === "delivered"){
+delivered++
+}
+
+})
+
+document.getElementById("ordersCount").innerText = totalOrders
+document.getElementById("revenueTotal").innerText = "₹" + revenue
+document.getElementById("deliveredCount").innerText = delivered
+
+}
+
+loadReports()
+
+</script>
+
+</body>
+
+</html>
