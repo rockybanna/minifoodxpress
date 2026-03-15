@@ -59,6 +59,10 @@ border-radius:4px;
 cursor:pointer;
 }
 
+button:hover{
+background:#218838;
+}
+
 </style>
 
 </head>
@@ -109,9 +113,7 @@ div.className="order-card"
 div.innerHTML = `
 
 <h3>Order #${order.id}</h3>
-
 <p>Total: ₹${order.total_amount}</p>
-
 <p>Address: ${order.address}</p>
 
 <button class="pickupBtn">Accept Delivery</button>
@@ -132,17 +134,44 @@ const { error } = await supabase
 .from("orders")
 .update({status:"picked_up"})
 .eq("id",id)
+.is("delivery_partner_id", null)
 
 if(error){
 alert("Error accepting delivery")
 console.error(error)
+return
 }
 
 loadOrders()
 
 }
 
+/* initial load */
+
 loadOrders()
+
+/* realtime updates */
+
+const channel = supabase
+.channel('orders-channel')
+.on(
+'postgres_changes',
+{
+event: '*',
+schema: 'public',
+table: 'orders'
+},
+(payload) => {
+
+console.log("Realtime update:", payload)
+
+/* reload orders on change */
+
+loadOrders()
+
+}
+)
+.subscribe()
 
 </script>
 
