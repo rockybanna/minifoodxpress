@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Track Order | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.container{
+padding:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+.status{
+margin-top:10px;
+font-weight:bold;
+font-size:18px;
+}
+
+.timeline{
+margin-top:20px;
+}
+
+.timeline div{
+margin-bottom:10px;
+padding:10px;
+background:#f0f0f0;
+border-radius:5px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="orders-history.html" style="color:white;text-decoration:none">← Orders</a>
+
+<h3>Order Tracking</h3>
+
+<span></span>
+
+</header>
+
+<div class="container">
+
+<div class="card">
+
+<h3 id="orderId">Order</h3>
+
+<p id="orderAmount"></p>
+
+<p class="status" id="orderStatus"></p>
+
+<div class="timeline" id="timeline"></div>
+
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const urlParams = new URLSearchParams(window.location.search)
+const orderId = urlParams.get("id")
+
+const orderStatusEl = document.getElementById("orderStatus")
+const orderAmountEl = document.getElementById("orderAmount")
+const orderIdEl = document.getElementById("orderId")
+const timeline = document.getElementById("timeline")
+
+async function loadOrder(){
+
+const { data, error } = await supabase
+.from("orders")
+.select("*")
+.eq("id",orderId)
+.single()
+
+if(error){
+
+console.error(error)
+return
+
+}
+
+orderIdEl.innerText="Order #"+data.id
+orderAmountEl.innerText="Total: ₹"+data.total_amount
+orderStatusEl.innerText="Status: "+data.status
+
+timeline.innerHTML=""
+
+const steps=["pending","accepted","preparing","ready","picked_up","delivered"]
+
+steps.forEach(step=>{
+
+const div=document.createElement("div")
+
+div.innerText=step
+
+if(step===data.status){
+
+div.style.background="#d4edda"
+
+}
+
+timeline.appendChild(div)
+
+})
+
+}
+
+loadOrder()
+
+</script>
+
+</body>
+
+</html>
