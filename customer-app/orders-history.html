@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>My Orders | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.orders-container{
+padding:20px;
+}
+
+.order-card{
+background:white;
+padding:15px;
+margin-bottom:15px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+.order-card h3{
+margin:0 0 8px 0;
+}
+
+.order-card p{
+margin:3px 0;
+font-size:14px;
+color:#555;
+}
+
+.status{
+font-weight:bold;
+margin-top:8px;
+}
+
+button{
+margin-top:10px;
+padding:6px 10px;
+border:none;
+background:#ff4d4f;
+color:white;
+border-radius:4px;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="home.html" style="color:white;text-decoration:none">← Home</a>
+
+<h3>My Orders</h3>
+
+<span></span>
+
+</header>
+
+<div class="orders-container" id="ordersList">
+
+</div>
+
+<script type="module">
+
+import { getOrdersByCustomer } from "../shared/js/api.js"
+
+const container = document.getElementById("ordersList")
+
+async function loadOrders(){
+
+const customerId = "current_user"   // placeholder for now
+
+const { data, error } = await getOrdersByCustomer(customerId)
+
+if(error){
+
+console.error(error)
+return
+
+}
+
+container.innerHTML=""
+
+if(!data || data.length === 0){
+
+container.innerHTML="<p>No orders yet.</p>"
+return
+
+}
+
+data.forEach(order=>{
+
+const div=document.createElement("div")
+
+div.className="order-card"
+
+div.innerHTML=`
+
+<h3>Order #${order.id}</h3>
+
+<p>Total: ₹${order.total_amount}</p>
+
+<p>Address: ${order.address}</p>
+
+<p class="status">Status: ${order.status}</p>
+
+<button onclick="window.location.href='order-tracking.html?id=${order.id}'">
+
+Track Order
+
+</button>
+
+`
+
+container.appendChild(div)
+
+})
+
+}
+
+loadOrders()
+
+</script>
+
+</body>
+
+</html>
