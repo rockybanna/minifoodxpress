@@ -25,3 +25,18 @@ export async function requireRole(role) {
     window.location.href = "/"
   }
 }
+export async function login(email, password) {
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert(error.message);
+    return null;
+  }
+
+  return data.user;
+
+}
