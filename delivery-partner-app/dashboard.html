@@ -224,19 +224,37 @@ loadOrders()
 
 /* realtime listener */
 
+/* optimized realtime listener */
+
 const channel = supabase
-.channel("orders-channel")
+.channel("ready-orders-channel")
+
 .on(
 "postgres_changes",
 {
-event:"*",
-schema:"public",
-table:"orders"
+event: "UPDATE",
+schema: "public",
+table: "orders"
 },
-()=>{
-if(isOnline) loadOrders()
+(payload) => {
+
+const newOrder = payload.new
+
+/* notify drivers only when order becomes READY */
+
+if(newOrder.status === "ready"){
+
+console.log("New order ready:", newOrder.id)
+
+if(isOnline){
+loadOrders()
+}
+
+}
+
 }
 )
+
 .subscribe()
 
 /* initialize */
