@@ -80,13 +80,37 @@ const container = document.getElementById("ordersContainer")
 
 async function loadOrders(){
 
+const { data:userData } = await supabase.auth.getUser()
+
+if(!userData || !userData.user){
+container.innerHTML="Please login"
+return
+}
+
+const authId = userData.user.id
+
+const { data:restaurant } = await supabase
+.from("restaurants")
+.select("*")
+.eq("auth_user_id",authId)
+.single()
+
+if(!restaurant){
+container.innerHTML="Restaurant profile missing"
+return
+}
+
+const restaurantId = restaurant.id
+
 const { data, error } = await supabase
 .from("orders")
 .select("*")
+.eq("restaurant_id",restaurantId)
 .in("status",["pending","accepted"])
 
 if(error){
 container.innerHTML="Order loading error"
+console.error(error)
 return
 }
 
