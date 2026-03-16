@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>My Orders | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+}
+
+.container{
+padding:20px;
+}
+
+.order-card{
+background:white;
+padding:15px;
+margin-bottom:12px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+.status{
+font-weight:bold;
+margin-top:5px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="home.html" style="color:white;text-decoration:none">← Restaurants</a>
+
+<h3>My Orders</h3>
+
+</header>
+
+<div class="container" id="ordersContainer">
+
+Loading orders...
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const container = document.getElementById("ordersContainer")
+
+async function loadOrders(){
+
+const { data:userData } = await supabase.auth.getUser()
+
+if(!userData || !userData.user){
+container.innerHTML="Please login"
+return
+}
+
+const userId = userData.user.id
+
+const { data, error } = await supabase
+.from("orders")
+.select("*")
+.eq("customer_id", userId)
+.order("id",{ascending:false})
+
+if(error){
+container.innerHTML="Order loading error"
+console.error(error)
+return
+}
+
+container.innerHTML=""
+
+if(!data || data.length===0){
+container.innerHTML="No orders yet"
+return
+}
+
+data.forEach(order=>{
+
+let statusText = ""
+
+if(order.status === "pending") statusText="Waiting for restaurant"
+if(order.status === "accepted") statusText="Restaurant preparing"
+if(order.status === "ready") statusText="Driver coming"
+if(order.status === "picked_up") statusText="Picked up"
+if(order.status === "out_for_delivery") statusText="Out for delivery"
+if(order.status === "delivered") statusText="Delivered"
+
+const div = document.createElement("div")
+
+div.className="order-card"
+
+div.innerHTML = `
+
+<h3>Order #${order.id}</h3>
+
+<p>Total ₹${order.total_amount}</p>
+
+<p class="status">Status: ${statusText}</p>
+
+`
+
+container.appendChild(div)
+
+})
+
+}
+
+loadOrders()
+
+</script>
+
+</body>
+
+</html>
