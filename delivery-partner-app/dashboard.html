@@ -7,7 +7,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Driver Dashboard</title>
+<title>Driver Dashboard | MiniFoodXpress</title>
 
 <link rel="stylesheet" href="../shared/css/main.css">
 
@@ -57,6 +57,10 @@ background:#28a745;
 background:#dc3545;
 }
 
+.accept{
+background:#007bff;
+}
+
 </style>
 
 </head>
@@ -94,18 +98,11 @@ return
 
 const authId = userData.user.id
 
-const { data:driver, error } = await supabase
+const { data:driver } = await supabase
 .from("delivery_partners")
 .select("*")
 .eq("auth_user_id", authId)
-.limit(1)
 .maybeSingle()
-
-if(error){
-console.error(error)
-ordersDiv.innerHTML="Driver load error"
-return
-}
 
 if(!driver){
 ordersDiv.innerHTML="Driver profile missing"
@@ -134,7 +131,7 @@ isOnline = !isOnline
 await supabase
 .from("delivery_partners")
 .update({
-status: isOnline ? "active" : "offline"
+status: isOnline ? "active":"offline"
 })
 .eq("id",driverId)
 
@@ -170,6 +167,7 @@ const { data, error } = await supabase
 .from("orders")
 .select("*")
 .eq("status","ready")
+.is("delivery_partner_id",null)
 
 if(error){
 console.error(error)
@@ -186,7 +184,7 @@ return
 
 data.forEach(order=>{
 
-const div = document.createElement("div")
+const div=document.createElement("div")
 
 div.className="order-card"
 
@@ -194,12 +192,14 @@ div.innerHTML = `
 
 <h3>Order #${order.id}</h3>
 
-<p>Total ₹${order.total_amount}</p>
+<p>Total: ₹${order.total_amount}</p>
 
 <p>Address: ${order.address}</p>
 
 <a href="pickup-order.html?id=${order.id}">
-<button class="online">Accept Order</button>
+
+<button class="accept">Accept Order</button>
+
 </a>
 
 `
