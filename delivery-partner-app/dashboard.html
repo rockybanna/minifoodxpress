@@ -99,8 +99,7 @@ const { data:driver } = await supabase
 .from("delivery_partners")
 .select("*")
 .eq("auth_user_id",authId)
-.single()
-
+.maybeSingle()
 driverId = driver.id
 isOnline = driver.status === "active"
 
