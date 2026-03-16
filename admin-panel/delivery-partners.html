@@ -20,69 +20,49 @@ background:#f5f5f5;
 }
 
 header{
-background:#ff4d4f;
+background:#343a40;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-nav{
-background:white;
-padding:10px;
-display:flex;
-gap:15px;
-border-bottom:1px solid #ddd;
-}
-
-nav a{
-text-decoration:none;
-color:#333;
-font-weight:bold;
 }
 
 .container{
 padding:20px;
 }
 
-.table{
-width:100%;
+.card{
 background:white;
+padding:20px;
+margin-bottom:15px;
 border-radius:8px;
-overflow:hidden;
 box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
 
-table{
+input{
 width:100%;
-border-collapse:collapse;
-}
-
-th,td{
-padding:12px;
-border-bottom:1px solid #eee;
-text-align:left;
-}
-
-th{
-background:#fafafa;
+padding:8px;
+margin-bottom:10px;
 }
 
 button{
-padding:5px 10px;
+padding:8px 12px;
 border:none;
 border-radius:4px;
 cursor:pointer;
+background:#007bff;
 color:white;
 }
 
-.enable{
-background:#28a745;
+.driver{
+background:white;
+padding:15px;
+margin-bottom:10px;
+border-radius:6px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-.disable{
-background:#dc3545;
+.status{
+font-weight:bold;
+margin-top:5px;
 }
 
 </style>
@@ -93,41 +73,29 @@ background:#dc3545;
 
 <header>
 
-<h3>Delivery Partners</h3>
+<a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
 
-<a href="dashboard.html" style="color:white;text-decoration:none">Dashboard</a>
+<h3>Delivery Partners</h3>
 
 </header>
 
-<nav>
-
-<a href="restaurants.html">Restaurants</a> <a href="delivery-partners.html">Delivery Partners</a> <a href="orders.html">Orders</a> <a href="customers.html">Customers</a> <a href="reports.html">Reports</a> <a href="system-settings.html">Settings</a>
-
-</nav>
-
 <div class="container">
 
-<div class="table">
+<div class="card">
 
-<table>
+<h3>Add Delivery Partner</h3>
 
-<thead>
+<input id="name" placeholder="Driver Name">
 
-<tr>
+<input id="phone" placeholder="Phone Number">
 
-<th>ID</th>
-<th>Name</th>
-<th>Phone</th>
-<th>Status</th>
-<th>Action</th>
+<button onclick="addDriver()">Add Driver</button>
 
-</tr>
+</div>
 
-</thead>
+<div id="driverList">
 
-<tbody id="driversTable"></tbody>
-
-</table>
+Loading drivers...
 
 </div>
 
@@ -137,7 +105,7 @@ background:#dc3545;
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const table = document.getElementById("driversTable")
+const list=document.getElementById("driverList")
 
 async function loadDrivers(){
 
@@ -146,46 +114,77 @@ const { data, error } = await supabase
 .select("*")
 
 if(error){
-console.error(error)
+list.innerHTML="Error loading drivers"
 return
 }
 
-table.innerHTML=""
+list.innerHTML=""
 
-data.forEach(driver=>{
+if(!data || data.length===0){
+list.innerHTML="No drivers added"
+return
+}
 
-const row=document.createElement("tr")
+data.forEach(d=>{
 
-row.innerHTML=`
+const div=document.createElement("div")
 
-<td>${driver.id}</td>
-<td>${driver.name || "-"}</td>
-<td>${driver.phone || "-"}</td>
-<td>${driver.status || "offline"}</td>
+div.className="driver"
 
-<td>
+div.innerHTML=`
 
-<button class="enable">Enable</button>
-<button class="disable">Disable</button>
+<h3>${d.name}</h3>
 
-</td>
+<p>${d.phone || ""}</p>
+
+<p class="status">Status: ${d.status}</p>
+
+<button onclick="deleteDriver('${d.id}')">
+
+Delete
+
+</button>
 
 `
 
-row.querySelector(".enable").onclick = ()=>updateStatus(driver.id,"active")
-row.querySelector(".disable").onclick = ()=>updateStatus(driver.id,"disabled")
-
-table.appendChild(row)
+list.appendChild(div)
 
 })
 
 }
 
-async function updateStatus(id,status){
+window.addDriver = async function(){
+
+const name=document.getElementById("name").value
+const phone=document.getElementById("phone").value
+
+if(!name){
+alert("Enter driver name")
+return
+}
 
 await supabase
 .from("delivery_partners")
-.update({status:status})
+.insert({
+name:name,
+phone:phone,
+status:"offline"
+})
+
+document.getElementById("name").value=""
+document.getElementById("phone").value=""
+
+loadDrivers()
+
+}
+
+window.deleteDriver = async function(id){
+
+if(!confirm("Delete driver?")) return
+
+await supabase
+.from("delivery_partners")
+.delete()
 .eq("id",id)
 
 loadDrivers()
