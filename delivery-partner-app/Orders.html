@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Order</title>
+<link rel="stylesheet" href="../shared/css/main.css">
+
+</head>
+
+<body>
+
+<h2>Order Details</h2>
+
+<div id="order"></div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const params = new URLSearchParams(window.location.search)
+const orderId = params.get("id")
+
+const div = document.getElementById("order")
+
+async function load(){
+
+const { data } = await supabase
+.from("orders")
+.select("*")
+.eq("id",orderId)
+.single()
+
+div.innerHTML=`
+
+<p>Total ₹${data.total_amount}</p>
+
+<p>Address: ${data.address}</p>
+
+<a href="https://www.google.com/maps/dir/?api=1&destination=${data.latitude},${data.longitude}" target="_blank">
+
+<button>Open Google Maps</button>
+
+</a>
+
+<button onclick="accept()">Accept Order</button>
+
+`
+
+}
+
+window.accept = async function(){
+
+await supabase
+.from("orders")
+.update({
+delivery_partner_id:data.id,
+status:"picked_up"
+})
+.eq("id",orderId)
+
+alert("Order accepted")
+
+}
+
+load()
+
+</script>
+
+</body>
+</html>
