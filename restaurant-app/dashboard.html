@@ -32,39 +32,42 @@ align-items:center;
 padding:20px;
 }
 
-.order-card{
+.card{
 background:white;
-padding:15px;
+padding:20px;
 margin-bottom:15px;
 border-radius:8px;
 box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
 
-.order-card h3{
-margin:0 0 8px 0;
-}
-
-.order-card p{
-margin:3px 0;
-font-size:14px;
-}
-
-.actions{
-margin-top:10px;
-}
-
 button{
-padding:6px 10px;
+padding:10px 15px;
 border:none;
-background:#28a745;
-color:white;
 border-radius:4px;
 cursor:pointer;
-margin-right:6px;
+margin-top:10px;
+background:#007bff;
+color:white;
 }
 
-button.reject{
-background:#dc3545;
+.stats{
+display:flex;
+gap:15px;
+flex-wrap:wrap;
+}
+
+.stat-box{
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+flex:1;
+min-width:150px;
+text-align:center;
+}
+
+.stat-box h2{
+margin:0;
 }
 
 </style>
@@ -77,102 +80,83 @@ background:#dc3545;
 
 <h3>Restaurant Dashboard</h3>
 
-<a href="orders-history.html" style="color:white;text-decoration:none">Order History</a>
+<a href="orders.html" style="color:white;text-decoration:none">View Orders</a>
 
 </header>
 
-<div class="container" id="ordersContainer"></div>
+<div class="container">
+
+<div class="stats">
+
+<div class="stat-box">
+
+<h2 id="todayOrders">0</h2>
+
+<p>Today's Orders</p>
+
+</div>
+
+<div class="stat-box">
+
+<h2 id="todayRevenue">₹0</h2>
+
+<p>Today's Revenue</p>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>Incoming Orders</h3>
+
+<p>Check and manage new customer orders.</p>
+
+<a href="orders.html">
+
+<button>Open Orders</button>
+
+</a>
+
+</div>
+
+</div>
 
 <script type="module">
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const container = document.getElementById("ordersContainer")
+async function loadStats(){
 
-async function loadOrders(){
+const today = new Date().toISOString().split("T")[0]
 
 const { data, error } = await supabase
 .from("orders")
 .select("*")
-.eq("status","pending")
+.gte("created_at", today)
 
 if(error){
 console.error(error)
-container.innerHTML="<p>Error loading orders</p>"
 return
 }
 
-container.innerHTML=""
-
-if(!data || data.length===0){
-container.innerHTML="<p>No new orders.</p>"
-return
-}
+let orderCount = 0
+let revenue = 0
 
 data.forEach(order=>{
 
-const div=document.createElement("div")
-div.className="order-card"
+orderCount++
 
-div.innerHTML=`
-
-<h3>Order #${order.id}</h3>
-
-<p>Total: ₹${order.total_amount}</p>
-
-<p>Address: ${order.address}</p>
-
-<div class="actions">
-
-<button class="accept">Accept</button>
-<button class="reject">Reject</button>
-
-</div>
-
-`
-
-div.querySelector(".accept").onclick = ()=>acceptOrder(order.id)
-div.querySelector(".reject").onclick = ()=>rejectOrder(order.id)
-
-container.appendChild(div)
+revenue += Number(order.total_amount)
 
 })
 
-}
-
-async function acceptOrder(id){
-
-const { error } = await supabase
-.from("orders")
-.update({status:"accepted"})
-.eq("id",id)
-
-if(error){
-alert("Error accepting order")
-console.error(error)
-}
-
-loadOrders()
+document.getElementById("todayOrders").innerText = orderCount
+document.getElementById("todayRevenue").innerText = "₹"+revenue
 
 }
 
-async function rejectOrder(id){
-
-const { error } = await supabase
-.from("orders")
-.update({status:"rejected"})
-.eq("id",id)
-
-if(error){
-alert("Error rejecting order")
-console.error(error)
-}
-
-loadOrders()
-
-}
-
-loadOrders()
+loadStats()
 
 </script>
 
