@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Driver Profile</title>
+<link rel="stylesheet" href="../shared/css/main.css">
+
+</head>
+
+<body>
+
+<h2>Profile</h2>
+
+<div id="profile"></div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const div = document.getElementById("profile")
+
+async function load(){
+
+const { data:user } = await supabase.auth.getUser()
+
+const { data } = await supabase
+.from("delivery_partners")
+.select("*")
+.eq("auth_user_id",user.user.id)
+.single()
+
+div.innerHTML = `
+
+<p>Name: ${data.name}</p>
+<p>Phone: ${data.phone}</p>
+<p>Status: ${data.status}</p>
+
+`
+
+}
+
+load()
+
+</script>
+
+</body>
+</html>
