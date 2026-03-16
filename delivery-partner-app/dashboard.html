@@ -120,6 +120,8 @@ loadOrders()
 ordersDiv.innerHTML="You are offline"
 }
 
+listenRealtime()
+
 }
 
 toggleBtn.onclick = async ()=>{
@@ -197,9 +199,7 @@ div.innerHTML = `
 <p>Address: ${order.address}</p>
 
 <a href="pickup-order.html?id=${order.id}">
-
 <button class="accept">Accept Order</button>
-
 </a>
 
 `
@@ -207,6 +207,29 @@ div.innerHTML = `
 ordersDiv.appendChild(div)
 
 })
+
+}
+
+function listenRealtime(){
+
+supabase
+.channel("orders-channel")
+.on(
+"postgres_changes",
+{
+event: "*",
+schema: "public",
+table: "orders"
+},
+(payload)=>{
+
+if(payload.new.status === "ready"){
+loadOrders()
+}
+
+}
+)
+.subscribe()
 
 }
 
