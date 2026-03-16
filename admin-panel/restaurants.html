@@ -7,7 +7,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Restaurants Management | MiniFoodXpress</title>
+<title>Manage Restaurants | MiniFoodXpress</title>
 
 <link rel="stylesheet" href="../shared/css/main.css">
 
@@ -20,69 +20,44 @@ background:#f5f5f5;
 }
 
 header{
-background:#ff4d4f;
+background:#343a40;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-nav{
-background:white;
-padding:10px;
-display:flex;
-gap:15px;
-border-bottom:1px solid #ddd;
-}
-
-nav a{
-text-decoration:none;
-color:#333;
-font-weight:bold;
 }
 
 .container{
 padding:20px;
 }
 
-.table{
-width:100%;
+.card{
 background:white;
+padding:20px;
+margin-bottom:15px;
 border-radius:8px;
-overflow:hidden;
 box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
 
-table{
+input{
 width:100%;
-border-collapse:collapse;
-}
-
-th,td{
-padding:12px;
-border-bottom:1px solid #eee;
-text-align:left;
-}
-
-th{
-background:#fafafa;
+padding:8px;
+margin-bottom:10px;
 }
 
 button{
-padding:5px 10px;
+padding:8px 12px;
 border:none;
 border-radius:4px;
 cursor:pointer;
+background:#007bff;
 color:white;
 }
 
-.approve{
-background:#28a745;
-}
-
-.disable{
-background:#dc3545;
+.restaurant{
+background:white;
+padding:15px;
+margin-bottom:10px;
+border-radius:6px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
 </style>
@@ -93,41 +68,29 @@ background:#dc3545;
 
 <header>
 
-<h3>Restaurants</h3>
+<a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
 
-<a href="dashboard.html" style="color:white;text-decoration:none">Dashboard</a>
+<h3>Manage Restaurants</h3>
 
 </header>
 
-<nav>
-
-<a href="restaurants.html">Restaurants</a> <a href="delivery-partners.html">Delivery Partners</a> <a href="orders.html">Orders</a> <a href="customers.html">Customers</a> <a href="reports.html">Reports</a> <a href="system-settings.html">Settings</a>
-
-</nav>
-
 <div class="container">
 
-<div class="table">
+<div class="card">
 
-<table>
+<h3>Add Restaurant</h3>
 
-<thead>
+<input id="name" placeholder="Restaurant Name">
 
-<tr>
+<input id="address" placeholder="Address">
 
-<th>ID</th>
-<th>Name</th>
-<th>Address</th>
-<th>Status</th>
-<th>Action</th>
+<button onclick="addRestaurant()">Add Restaurant</button>
 
-</tr>
+</div>
 
-</thead>
+<div id="restaurantList">
 
-<tbody id="restaurantsTable"></tbody>
-
-</table>
+Loading restaurants...
 
 </div>
 
@@ -137,7 +100,7 @@ background:#dc3545;
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const table = document.getElementById("restaurantsTable")
+const list = document.getElementById("restaurantList")
 
 async function loadRestaurants(){
 
@@ -146,46 +109,74 @@ const { data, error } = await supabase
 .select("*")
 
 if(error){
-console.error(error)
+list.innerHTML="Error loading restaurants"
 return
 }
 
-table.innerHTML=""
+list.innerHTML=""
+
+if(!data || data.length===0){
+list.innerHTML="No restaurants added"
+return
+}
 
 data.forEach(r=>{
 
-const row=document.createElement("tr")
+const div=document.createElement("div")
 
-row.innerHTML=`
+div.className="restaurant"
 
-<td>${r.id}</td>
-<td>${r.name}</td>
-<td>${r.address || "-"}</td>
-<td>${r.status || "pending"}</td>
+div.innerHTML=`
 
-<td>
+<h3>${r.name}</h3>
 
-<button class="approve">Approve</button>
-<button class="disable">Disable</button>
+<p>${r.address || ""}</p>
 
-</td>
+<button onclick="deleteRestaurant('${r.id}')">
+
+Delete
+
+</button>
 
 `
 
-row.querySelector(".approve").onclick = ()=>updateStatus(r.id,"active")
-row.querySelector(".disable").onclick = ()=>updateStatus(r.id,"disabled")
-
-table.appendChild(row)
+list.appendChild(div)
 
 })
 
 }
 
-async function updateStatus(id,status){
+window.addRestaurant = async function(){
+
+const name=document.getElementById("name").value
+const address=document.getElementById("address").value
+
+if(!name){
+alert("Enter restaurant name")
+return
+}
 
 await supabase
 .from("restaurants")
-.update({status:status})
+.insert({
+name:name,
+address:address
+})
+
+document.getElementById("name").value=""
+document.getElementById("address").value=""
+
+loadRestaurants()
+
+}
+
+window.deleteRestaurant = async function(id){
+
+if(!confirm("Delete restaurant?")) return
+
+await supabase
+.from("restaurants")
+.delete()
 .eq("id",id)
 
 loadRestaurants()
