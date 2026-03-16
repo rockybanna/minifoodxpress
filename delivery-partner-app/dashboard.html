@@ -1,97 +1,38 @@
 <!DOCTYPE html>
-
-<html lang="en">
-
+<html>
 <head>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Delivery Dashboard | MiniFoodXpress</title>
-
+<title>Driver Dashboard</title>
 <link rel="stylesheet" href="../shared/css/main.css">
-
-<style>
-
-body{
-font-family:Arial,sans-serif;
-margin:0;
-background:#f5f5f5;
-}
-
-header{
-background:#ff4d4f;
-color:white;
-padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-.container{
-padding:20px;
-}
-
-.order-card{
-background:white;
-padding:15px;
-margin-bottom:15px;
-border-radius:8px;
-box-shadow:0 2px 8px rgba(0,0,0,0.1);
-}
-
-button{
-margin-top:10px;
-padding:8px 12px;
-border:none;
-border-radius:4px;
-cursor:pointer;
-color:white;
-}
-
-.pickup{
-background:#28a745;
-}
-
-.online{
-background:#28a745;
-}
-
-.offline{
-background:#dc3545;
-}
-
-</style>
 
 </head>
 
 <body>
 
-<header>
+<h2>Driver Dashboard</h2>
 
-<h3>Delivery Dashboard</h3>
+<button id="toggleBtn">Loading...</button>
 
-<button id="statusToggle" class="offline">Go Online</button>
-
-</header>
-
-<div class="container" id="ordersContainer"></div>
+<div id="orders"></div>
 
 <script type="module">
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const container = document.getElementById("ordersContainer")
-const toggleBtn = document.getElementById("statusToggle")
-
 let driverId = null
 let isOnline = false
 
-/* get logged in user */
+const toggleBtn = document.getElementById("toggleBtn")
+const ordersDiv = document.getElementById("orders")
 
-async function getDriver(){
+async function init(){
 
 const { data } = await supabase.auth.getUser()
+
+if(!data.user){
+location.href="login.html"
+return
+}
 
 const authId = data.user.id
 
@@ -100,18 +41,22 @@ const { data:driver } = await supabase
 .select("*")
 .eq("auth_user_id",authId)
 .maybeSingle()
-  if(!driver){
-container.innerHTML="<p>Driver profile not found.</p>"
+
+if(!driver){
+ordersDiv.innerHTML="Driver profile missing"
 return
 }
+
 driverId = driver.id
 isOnline = driver.status === "active"
 
 updateButton()
 
+if(isOnline){
+loadOrders()
 }
 
-/* toggle online */
+}
 
 toggleBtn.onclick = async ()=>{
 
@@ -122,7 +67,7 @@ isOnline = !isOnline
 await supabase
 .from("delivery_partners")
 .update({
-status: isOnline ? "active" : "offline"
+status:isOnline ? "active":"offline"
 })
 .eq("id",driverId)
 
@@ -131,147 +76,53 @@ updateButton()
 if(isOnline){
 loadOrders()
 }else{
-container.innerHTML="<p>You are offline.</p>"
+ordersDiv.innerHTML="You are offline"
 }
 
 }
-
-/* button UI */
 
 function updateButton(){
 
-if(isOnline){
-
-toggleBtn.innerText="Go Offline"
-toggleBtn.className="online"
-
-}else{
-
-toggleBtn.innerText="Go Online"
-toggleBtn.className="offline"
+toggleBtn.innerText = isOnline ? "Go Offline" : "Go Online"
 
 }
-
-}
-
-/* load ready orders */
 
 async function loadOrders(){
 
-if(!isOnline){
-container.innerHTML="<p>You are offline.</p>"
-return
-}
-
-const { data, error } = await supabase
+const { data } = await supabase
 .from("orders")
 .select("*")
 .eq("status","ready")
 
-if(error){
-console.error(error)
-return
-}
-
-container.innerHTML=""
+ordersDiv.innerHTML=""
 
 if(!data || data.length===0){
-container.innerHTML="<p>No pickup orders available.</p>"
+ordersDiv.innerHTML="No orders available"
 return
 }
 
 data.forEach(order=>{
 
-const div=document.createElement("div")
-div.className="order-card"
+const div = document.createElement("div")
 
 div.innerHTML = `
-
 <h3>Order #${order.id}</h3>
-<p>Total: ₹${order.total_amount}</p>
-<p>Address: ${order.address}</p>
+<p>Total ₹${order.total_amount}</p>
 
-<button class="pickup">Accept Delivery</button>
-
+<a href="orders.html?id=${order.id}">
+<button>View</button>
+</a>
 `
 
-div.querySelector(".pickup").onclick = ()=>acceptDelivery(order.id)
-
-container.appendChild(div)
+ordersDiv.appendChild(div)
 
 })
 
 }
 
-/* accept order */
-
-async function acceptDelivery(orderId){
-
-const { error } = await supabase
-.from("orders")
-.update({
-delivery_partner_id: driverId,
-status:"picked_up"
-})
-.eq("id",orderId)
-.is("delivery_partner_id",null)
-
-if(error){
-alert("Order already taken by another driver")
-return
-}
-
-loadOrders()
-
-}
-
-/* realtime listener */
-
-/* optimized realtime listener */
-
-const channel = supabase
-.channel("ready-orders-channel")
-
-.on(
-"postgres_changes",
-{
-event: "UPDATE",
-schema: "public",
-table: "orders"
-},
-(payload) => {
-
-const newOrder = payload.new
-
-/* notify drivers only when order becomes READY */
-
-if(newOrder.status === "ready"){
-
-console.log("New order ready:", newOrder.id)
-
-if(isOnline){
-loadOrders()
-}
-
-}
-
-}
-)
-
-.subscribe()
-
-/* initialize */
-
-await getDriver()
-
-if(isOnline){
-loadOrders()
-}else{
-container.innerHTML="<p>You are offline.</p>"
-}
+init()
 
 </script>
 
 </body>
-
 </html>
