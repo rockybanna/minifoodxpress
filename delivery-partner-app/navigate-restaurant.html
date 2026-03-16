@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Navigate | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+}
+
+.container{
+padding:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+button{
+padding:10px 15px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+margin-top:10px;
+color:white;
+}
+
+.maps{
+background:#007bff;
+}
+
+.deliver{
+background:#28a745;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
+
+<h3>Navigation</h3>
+
+</header>
+
+<div class="container">
+
+<div class="card" id="orderInfo">
+
+Loading...
+
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const params = new URLSearchParams(window.location.search)
+const orderId = params.get("id")
+
+const container = document.getElementById("orderInfo")
+
+let orderData = null
+
+async function load(){
+
+const { data, error } = await supabase
+.from("orders")
+.select("*")
+.eq("id",orderId)
+.single()
+
+if(error){
+container.innerHTML="Order load error"
+return
+}
+
+orderData = data
+
+const lat = data.latitude
+const lng = data.longitude
+
+container.innerHTML = `
+
+<h3>Order #${data.id}</h3>
+
+<p>Total ₹${data.total_amount}</p>
+
+<p>Address: ${data.address}</p>
+
+<a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank">
+
+<button class="maps">Open Google Maps</button>
+
+</a>
+
+<br>
+
+<button class="deliver" onclick="startDelivery()">Start Delivery</button>
+
+`
+
+}
+
+window.startDelivery = async function(){
+
+await supabase
+.from("orders")
+.update({
+status:"out_for_delivery"
+})
+.eq("id",orderId)
+
+window.location.href="deliver-order.html?id="+orderId
+
+}
+
+load()
+
+</script>
+
+</body>
+
+</html>
