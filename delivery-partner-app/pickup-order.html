@@ -23,40 +23,35 @@ header{
 background:#ff4d4f;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
 }
 
 .container{
 padding:20px;
 }
 
-.order-card{
+.card{
 background:white;
-padding:15px;
-margin-bottom:15px;
+padding:20px;
 border-radius:8px;
 box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
 
-.order-card h3{
-margin:0 0 8px 0;
-}
-
-.order-card p{
-margin:4px 0;
-font-size:14px;
-}
-
 button{
-margin-top:10px;
-padding:6px 10px;
+padding:10px 15px;
 border:none;
-background:#28a745;
-color:white;
 border-radius:4px;
 cursor:pointer;
+margin-top:10px;
+}
+
+.pickup{
+background:#28a745;
+color:white;
+}
+
+.navigate{
+background:#007bff;
+color:white;
 }
 
 </style>
@@ -69,82 +64,91 @@ cursor:pointer;
 
 <a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
 
-<h3>Pickup Orders</h3>
-
-<span></span>
+<h3>Pickup Order</h3>
 
 </header>
 
-<div class="container" id="ordersContainer"></div>
+<div class="container">
+
+<div class="card" id="orderDetails">
+
+Loading order...
+
+</div>
+
+</div>
 
 <script type="module">
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const container = document.getElementById("ordersContainer")
+const params = new URLSearchParams(window.location.search)
+const orderId = params.get("id")
 
-async function loadOrders(){
+const container = document.getElementById("orderDetails")
+
+let orderData = null
+
+async function loadOrder(){
 
 const { data, error } = await supabase
 .from("orders")
 .select("*")
-.eq("status","picked_up")
+.eq("id",orderId)
+.single()
 
 if(error){
-console.error(error)
-container.innerHTML="<p>Error loading orders</p>"
+container.innerHTML="Order load error"
 return
 }
 
-container.innerHTML=""
+orderData = data
 
-if(!data || data.length===0){
-container.innerHTML="<p>No pickup orders.</p>"
-return
-}
+container.innerHTML = `
 
-data.forEach(order=>{
+<h3>Order #${data.id}</h3>
 
-const div=document.createElement("div")
-div.className="order-card"
+<p>Total: ₹${data.total_amount}</p>
 
-div.innerHTML = `
+<p>Address: ${data.address}</p>
 
-<h3>Order #${order.id}</h3>
+<button class="pickup" onclick="acceptOrder()">Confirm Pickup</button>
 
-<p>Total: ₹${order.total_amount}</p>
-
-<p>Address: ${order.address}</p>
-
-<button class="confirmPickup">Confirm Pickup</button>
+<a href="navigate-restaurant.html?id=${data.id}">
+<button class="navigate">Navigate to Restaurant</button>
+</a>
 
 `
 
-div.querySelector(".confirmPickup").onclick = ()=>confirmPickup(order.id)
-
-container.appendChild(div)
-
-})
-
 }
 
-async function confirmPickup(id){
+window.acceptOrder = async function(){
 
-const { error } = await supabase
+const { data:userData } = await supabase.auth.getUser()
+
+const authId = userData.user.id
+
+const { data:driver } = await supabase
+.from("delivery_partners")
+.select("*")
+.eq("auth_user_id",authId)
+.single()
+
+await supabase
 .from("orders")
-.update({status:"out_for_delivery"})
-.eq("id",id)
+.update({
+delivery_partner_id: driver.id,
+status: "picked_up"
+})
+.eq("id",orderId)
 
-if(error){
-alert("Error confirming pickup")
-console.error(error)
+alert("Order picked successfully")
+
+window.location.href="navigate-restaurant.html?id="+orderId
+
 }
 
-loadOrders()
-
-}
-
-loadOrders()
+loadOrder()
 
 </script>
 
