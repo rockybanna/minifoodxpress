@@ -1,19 +1,77 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="en">
+
 <head>
 
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Driver Dashboard</title>
+
 <link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.container{
+padding:20px;
+}
+
+.order-card{
+background:white;
+padding:15px;
+margin-bottom:15px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+button{
+padding:8px 12px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+color:white;
+margin-top:8px;
+}
+
+.online{
+background:#28a745;
+}
+
+.offline{
+background:#dc3545;
+}
+
+</style>
 
 </head>
 
 <body>
 
-<h2>Driver Dashboard</h2>
+<header>
+
+<h3>Driver Dashboard</h3>
 
 <button id="toggleBtn">Loading...</button>
 
-<div id="orders"></div>
+</header>
+
+<div class="container" id="orders"></div>
 
 <script type="module">
 
@@ -27,20 +85,27 @@ const ordersDiv = document.getElementById("orders")
 
 async function init(){
 
-const { data } = await supabase.auth.getUser()
+const { data:userData } = await supabase.auth.getUser()
 
-if(!data.user){
+if(!userData || !userData.user){
 location.href="login.html"
 return
 }
 
-const authId = data.user.id
+const authId = userData.user.id
 
-const { data:driver } = await supabase
+const { data:driver, error } = await supabase
 .from("delivery_partners")
 .select("*")
-.eq("auth_user_id",authId)
+.eq("auth_user_id", authId)
+.limit(1)
 .maybeSingle()
+
+if(error){
+console.error(error)
+ordersDiv.innerHTML="Driver load error"
+return
+}
 
 if(!driver){
 ordersDiv.innerHTML="Driver profile missing"
@@ -54,6 +119,8 @@ updateButton()
 
 if(isOnline){
 loadOrders()
+}else{
+ordersDiv.innerHTML="You are offline"
 }
 
 }
@@ -67,7 +134,7 @@ isOnline = !isOnline
 await supabase
 .from("delivery_partners")
 .update({
-status:isOnline ? "active":"offline"
+status: isOnline ? "active" : "offline"
 })
 .eq("id",driverId)
 
@@ -83,16 +150,32 @@ ordersDiv.innerHTML="You are offline"
 
 function updateButton(){
 
-toggleBtn.innerText = isOnline ? "Go Offline" : "Go Online"
+if(isOnline){
+
+toggleBtn.innerText="Go Offline"
+toggleBtn.className="online"
+
+}else{
+
+toggleBtn.innerText="Go Online"
+toggleBtn.className="offline"
+
+}
 
 }
 
 async function loadOrders(){
 
-const { data } = await supabase
+const { data, error } = await supabase
 .from("orders")
 .select("*")
 .eq("status","ready")
+
+if(error){
+console.error(error)
+ordersDiv.innerHTML="Order loading error"
+return
+}
 
 ordersDiv.innerHTML=""
 
@@ -105,13 +188,20 @@ data.forEach(order=>{
 
 const div = document.createElement("div")
 
+div.className="order-card"
+
 div.innerHTML = `
+
 <h3>Order #${order.id}</h3>
+
 <p>Total ₹${order.total_amount}</p>
 
-<a href="orders.html?id=${order.id}">
-<button>View</button>
+<p>Address: ${order.address}</p>
+
+<a href="pickup-order.html?id=${order.id}">
+<button class="online">Accept Order</button>
 </a>
+
 `
 
 ordersDiv.appendChild(div)
@@ -125,4 +215,5 @@ init()
 </script>
 
 </body>
+
 </html>
