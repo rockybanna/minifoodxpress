@@ -20,65 +20,31 @@ background:#f5f5f5;
 }
 
 header{
-background:#ff4d4f;
+background:#343a40;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-nav{
-background:white;
-padding:10px;
-display:flex;
-gap:15px;
-border-bottom:1px solid #ddd;
-}
-
-nav a{
-text-decoration:none;
-color:#333;
-font-weight:bold;
 }
 
 .container{
 padding:20px;
 }
 
-.table{
-width:100%;
+.customer{
 background:white;
-border-radius:8px;
-overflow:hidden;
-box-shadow:0 2px 8px rgba(0,0,0,0.1);
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-}
-
-th,td{
-padding:12px;
-border-bottom:1px solid #eee;
-text-align:left;
-}
-
-th{
-background:#fafafa;
+padding:15px;
+margin-bottom:10px;
+border-radius:6px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
 button{
-padding:5px 10px;
+padding:8px 12px;
 border:none;
 border-radius:4px;
 cursor:pointer;
-color:white;
-}
-
-.block{
 background:#dc3545;
+color:white;
+margin-top:8px;
 }
 
 </style>
@@ -89,43 +55,15 @@ background:#dc3545;
 
 <header>
 
-<h3>Customers</h3>
+<a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
 
-<a href="dashboard.html" style="color:white;text-decoration:none">Dashboard</a>
+<h3>Customers</h3>
 
 </header>
 
-<nav>
+<div class="container" id="customerList">
 
-<a href="restaurants.html">Restaurants</a> <a href="delivery-partners.html">Delivery Partners</a> <a href="orders.html">Orders</a> <a href="customers.html">Customers</a> <a href="reports.html">Reports</a> <a href="system-settings.html">Settings</a>
-
-</nav>
-
-<div class="container">
-
-<div class="table">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>ID</th>
-<th>Name</th>
-<th>Email</th>
-<th>Status</th>
-<th>Action</th>
-
-</tr>
-
-</thead>
-
-<tbody id="customersTable"></tbody>
-
-</table>
-
-</div>
+Loading customers...
 
 </div>
 
@@ -133,7 +71,7 @@ background:#dc3545;
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const table = document.getElementById("customersTable")
+const container=document.getElementById("customerList")
 
 async function loadCustomers(){
 
@@ -142,42 +80,50 @@ const { data, error } = await supabase
 .select("*")
 
 if(error){
-console.error(error)
+container.innerHTML="Error loading customers"
 return
 }
 
-table.innerHTML=""
+container.innerHTML=""
 
-data.forEach(customer=>{
+if(!data || data.length===0){
+container.innerHTML="No customers found"
+return
+}
 
-const row=document.createElement("tr")
+data.forEach(c=>{
 
-row.innerHTML=`
+const div=document.createElement("div")
 
-<td>${customer.id}</td>
-<td>${customer.name || "-"}</td>
-<td>${customer.email || "-"}</td>
-<td>${customer.status || "active"}</td>
+div.className="customer"
 
-<td>
-<button class="block">Block</button>
-</td>
+div.innerHTML=`
+
+<h3>${c.name || "Customer"}</h3>
+
+<p>${c.phone || ""}</p>
+
+<button onclick="deleteCustomer('${c.id}')">
+
+Delete Customer
+
+</button>
 
 `
 
-row.querySelector(".block").onclick = ()=>updateStatus(customer.id,"blocked")
-
-table.appendChild(row)
+container.appendChild(div)
 
 })
 
 }
 
-async function updateStatus(id,status){
+window.deleteCustomer = async function(id){
+
+if(!confirm("Delete customer?")) return
 
 await supabase
 .from("customers")
-.update({status:status})
+.delete()
 .eq("id",id)
 
 loadCustomers()
