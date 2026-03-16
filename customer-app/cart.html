@@ -67,11 +67,7 @@ color:white;
 
 </header>
 
-<div class="container" id="cartContainer">
-
-Loading cart...
-
-</div>
+<div class="container" id="cartContainer"></div>
 
 <script type="module">
 
@@ -81,30 +77,31 @@ const container = document.getElementById("cartContainer")
 
 let cart = JSON.parse(localStorage.getItem("cart") || "[]")
 
+const restaurantId = localStorage.getItem("restaurant_id")
+
 function renderCart(){
 
 if(cart.length === 0){
-container.innerHTML = "Cart is empty"
+container.innerHTML="Cart empty"
 return
 }
 
 let total = 0
 
-container.innerHTML = ""
+container.innerHTML=""
 
-cart.forEach(item => {
+cart.forEach(item=>{
 
 total += item.price * item.qty
 
-const div = document.createElement("div")
+const div=document.createElement("div")
 
-div.className = "cart-item"
+div.className="cart-item"
 
-div.innerHTML = `
+div.innerHTML=`
 
 <h3>${item.name}</h3>
-
-<p>₹${item.price} x ${item.qty}</p>
+<p>₹${item.price} × ${item.qty}</p>
 
 `
 
@@ -112,17 +109,17 @@ container.appendChild(div)
 
 })
 
-const totalDiv = document.createElement("div")
+const totalDiv=document.createElement("div")
 
-totalDiv.className = "total"
+totalDiv.className="total"
 
-totalDiv.innerHTML = `
+totalDiv.innerHTML=`
 
 Total: ₹${total}
 
 <br>
 
-<button onclick="checkout(${total})">
+<button onclick="placeOrder(${total})">
 
 Place Order
 
@@ -134,21 +131,22 @@ container.appendChild(totalDiv)
 
 }
 
-window.checkout = async function(total){
+window.placeOrder = async function(total){
 
 const { data:userData } = await supabase.auth.getUser()
 
 if(!userData || !userData.user){
-alert("Please login first")
+alert("Login required")
 return
 }
 
-const userId = userData.user.id
+const customerId = userData.user.id
 
-const { data, error } = await supabase
+const { data:order, error } = await supabase
 .from("orders")
 .insert({
-customer_id: userId,
+customer_id: customerId,
+restaurant_id: restaurantId,
 total_amount: total,
 status: "pending"
 })
@@ -156,19 +154,17 @@ status: "pending"
 .single()
 
 if(error){
-alert("Order creation failed")
 console.error(error)
+alert("Order failed")
 return
 }
-
-const orderId = data.id
 
 for(const item of cart){
 
 await supabase
 .from("order_items")
 .insert({
-order_id: orderId,
+order_id: order.id,
 menu_item_id: item.id,
 quantity: item.qty,
 price: item.price
@@ -178,9 +174,9 @@ price: item.price
 
 localStorage.removeItem("cart")
 
-alert("Order placed successfully")
+alert("Order placed!")
 
-window.location.href = "orders.html"
+window.location.href="orders.html"
 
 }
 
