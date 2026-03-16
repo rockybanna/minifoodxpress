@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Delivery History</title>
+<link rel="stylesheet" href="../shared/css/main.css">
+
+</head>
+
+<body>
+
+<h2>Order History</h2>
+
+<div id="history"></div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const div = document.getElementById("history")
+
+async function load(){
+
+const { data } = await supabase
+.from("orders")
+.select("*")
+.eq("status","delivered")
+
+data.forEach(order=>{
+
+const d = document.createElement("div")
+
+d.innerHTML = `
+<p>Order ${order.id}</p>
+<p>₹${order.total_amount}</p>
+`
+
+div.appendChild(d)
+
+})
+
+}
+
+load()
+
+</script>
+
+</body>
+</html>
