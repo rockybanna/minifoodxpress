@@ -20,36 +20,19 @@ background:#f5f5f5;
 }
 
 header{
-background:#ff4d4f;
+background:#343a40;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-nav{
-background:white;
-padding:10px;
-display:flex;
-gap:15px;
-border-bottom:1px solid #ddd;
-}
-
-nav a{
-text-decoration:none;
-color:#333;
-font-weight:bold;
 }
 
 .container{
 padding:20px;
 }
 
-.cards{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+.stats{
+display:flex;
 gap:20px;
+flex-wrap:wrap;
 }
 
 .card{
@@ -57,11 +40,14 @@ background:white;
 padding:20px;
 border-radius:8px;
 box-shadow:0 2px 8px rgba(0,0,0,0.1);
+flex:1;
+min-width:200px;
 text-align:center;
 }
 
 .card h2{
-margin:10px 0;
+margin:0;
+font-size:28px;
 }
 
 </style>
@@ -72,35 +58,34 @@ margin:10px 0;
 
 <header>
 
-<h3>Reports</h3>
+<a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
 
-<a href="dashboard.html" style="color:white;text-decoration:none">Dashboard</a>
+<h3>Platform Reports</h3>
 
 </header>
 
-<nav>
-
-<a href="restaurants.html">Restaurants</a> <a href="delivery-partners.html">Delivery Partners</a> <a href="orders.html">Orders</a> <a href="customers.html">Customers</a> <a href="reports.html">Reports</a> <a href="system-settings.html">Settings</a>
-
-</nav>
-
 <div class="container">
 
-<div class="cards">
+<div class="stats">
 
 <div class="card">
+<h2 id="todayOrders">0</h2>
+<p>Today's Orders</p>
+</div>
+
+<div class="card">
+<h2 id="todayRevenue">₹0</h2>
+<p>Today's Revenue</p>
+</div>
+
+<div class="card">
+<h2 id="totalOrders">0</h2>
 <p>Total Orders</p>
-<h2 id="ordersCount">0</h2>
 </div>
 
 <div class="card">
+<h2 id="totalRevenue">₹0</h2>
 <p>Total Revenue</p>
-<h2 id="revenueTotal">₹0</h2>
-</div>
-
-<div class="card">
-<p>Delivered Orders</p>
-<h2 id="deliveredCount">0</h2>
 </div>
 
 </div>
@@ -113,32 +98,39 @@ import { supabase } from "../shared/js/supabase-client.js"
 
 async function loadReports(){
 
-const { data, error } = await supabase
+const today = new Date().toISOString().split("T")[0]
+
+const { data:todayData } = await supabase
+.from("orders")
+.select("*")
+.gte("created_at",today)
+
+let todayOrders = 0
+let todayRevenue = 0
+
+todayData?.forEach(o=>{
+todayOrders++
+todayRevenue += Number(o.total_amount)
+})
+
+document.getElementById("todayOrders").innerText = todayOrders
+document.getElementById("todayRevenue").innerText = "₹"+todayRevenue
+
+
+const { data:allData } = await supabase
 .from("orders")
 .select("*")
 
-if(error){
-console.error(error)
-return
-}
+let totalOrders = 0
+let totalRevenue = 0
 
-let totalOrders = data.length
-let revenue = 0
-let delivered = 0
-
-data.forEach(order=>{
-
-revenue += Number(order.total_amount || 0)
-
-if(order.status === "delivered"){
-delivered++
-}
-
+allData?.forEach(o=>{
+totalOrders++
+totalRevenue += Number(o.total_amount)
 })
 
-document.getElementById("ordersCount").innerText = totalOrders
-document.getElementById("revenueTotal").innerText = "₹" + revenue
-document.getElementById("deliveredCount").innerText = delivered
+document.getElementById("totalOrders").innerText = totalOrders
+document.getElementById("totalRevenue").innerText = "₹"+totalRevenue
 
 }
 
