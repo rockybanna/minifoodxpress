@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Payment Verifications</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#343a40;
+color:white;
+padding:15px;
+}
+
+.container{
+padding:20px;
+}
+
+.card{
+background:white;
+padding:15px;
+margin-bottom:10px;
+border-radius:6px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+button{
+padding:8px 12px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+margin-right:5px;
+}
+
+.verify{
+background:#28a745;
+color:white;
+}
+
+.fail{
+background:#dc3545;
+color:white;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
+
+<h3>Payment Verifications</h3>
+
+</header>
+
+<div class="container">
+
+<div id="paymentsList">
+Loading payments...
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const list=document.getElementById("paymentsList")
+
+async function loadPayments(){
+
+const { data,error } = await supabase
+.from("payments")
+.select("*")
+.eq("status","pending")
+
+if(error){
+list.innerHTML="Error loading payments"
+return
+}
+
+list.innerHTML=""
+
+if(!data || data.length===0){
+list.innerHTML="No pending payments"
+return
+}
+
+data.forEach(p=>{
+
+const div=document.createElement("div")
+div.className="card"
+
+div.innerHTML=`
+
+<h3>Payment ₹${p.amount}</h3>
+
+<p>Order ID: ${p.order_id}</p>
+
+<p>Method: ${p.payment_method}</p>
+
+<button class="verify" onclick="approvePayment('${p.id}')">
+Verify
+</button>
+
+<button class="fail" onclick="rejectPayment('${p.id}')">
+Fail
+</button>
+
+`
+
+list.appendChild(div)
+
+})
+
+}
+
+window.approvePayment = async function(id){
+
+await supabase
+.from("payments")
+.update({ status:"verified" })
+.eq("id",id)
+
+loadPayments()
+
+}
+
+window.rejectPayment = async function(id){
+
+await supabase
+.from("payments")
+.update({ status:"failed" })
+.eq("id",id)
+
+loadPayments()
+
+}
+
+loadPayments()
+
+</script>
+
+</body>
+</html>
