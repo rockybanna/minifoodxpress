@@ -23,35 +23,23 @@ header{
 background:#ff4d4f;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
 }
 
 .container{
 padding:20px;
 }
 
-.order-card{
+.order{
 background:white;
 padding:15px;
-margin-bottom:15px;
-border-radius:8px;
-box-shadow:0 2px 8px rgba(0,0,0,0.1);
+margin-bottom:10px;
+border-radius:6px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-.order-card h3{
-margin:0 0 8px 0;
-}
-
-.order-card p{
-margin:4px 0;
-font-size:14px;
-}
-
-.status{
-margin-top:5px;
+.total{
 font-weight:bold;
+margin-top:5px;
 }
 
 </style>
@@ -64,54 +52,70 @@ font-weight:bold;
 
 <a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
 
-<h3>Order History</h3>
-
-<span></span>
+<h3>Completed Orders</h3>
 
 </header>
 
-<div class="container" id="ordersContainer"></div>
+<div class="container" id="ordersContainer">
+
+Loading orders...
+
+</div>
 
 <script type="module">
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const container = document.getElementById("ordersContainer")
+const container=document.getElementById("ordersContainer")
 
 async function loadOrders(){
+
+const { data:userData } = await supabase.auth.getUser()
+
+if(!userData || !userData.user){
+alert("Login required")
+window.location.href="login.html"
+return
+}
+
+const { data:restaurant } = await supabase
+.from("restaurants")
+.select("*")
+.eq("auth_user_id",userData.user.id)
+.single()
 
 const { data, error } = await supabase
 .from("orders")
 .select("*")
+.eq("restaurant_id",restaurant.id)
+.eq("status","delivered")
 .order("id",{ascending:false})
 
 if(error){
-console.error(error)
-container.innerHTML="<p>Error loading orders</p>"
+container.innerHTML="Error loading orders"
 return
 }
 
 container.innerHTML=""
 
 if(!data || data.length===0){
-container.innerHTML="<p>No order history available.</p>"
+container.innerHTML="No completed orders"
 return
 }
 
 data.forEach(order=>{
 
 const div=document.createElement("div")
-div.className="order-card"
 
-div.innerHTML = `
+div.className="order"
+
+div.innerHTML=`
 
 <h3>Order #${order.id}</h3>
 
 <p>Total: ₹${order.total_amount}</p>
 
-<p>Address: ${order.address}</p>
-
-<p class="status">Status: ${order.status}</p>
+<p class="total">Delivered</p>
 
 `
 
