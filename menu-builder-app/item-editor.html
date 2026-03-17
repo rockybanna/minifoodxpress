@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Edit Menu Item</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+margin:0;
+background:#f5f5f5;
+}
+
+header{
+background:#007bff;
+color:white;
+padding:15px;
+}
+
+.container{
+padding:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+max-width:400px;
+}
+
+input,select,textarea{
+width:100%;
+padding:8px;
+margin-bottom:10px;
+}
+
+button{
+padding:10px;
+border:none;
+background:#28a745;
+color:white;
+border-radius:4px;
+cursor:pointer;
+width:100%;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="menu-editor.html" style="color:white;text-decoration:none">← Menu</a>
+
+<h3>Edit Menu Item</h3>
+
+</header>
+
+<div class="container">
+
+<div class="card">
+
+<input id="name" placeholder="Item Name">
+
+<select id="category"></select>
+
+<input id="price" placeholder="Price">
+
+<textarea id="description" placeholder="Description"></textarea>
+
+<input id="imageUrl" placeholder="Image URL">
+
+<select id="availability">
+<option value="true">Available</option>
+<option value="false">Unavailable</option>
+</select>
+
+<button onclick="saveItem()">Save Changes</button>
+
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const itemId = localStorage.getItem("menu_item_id")
+
+const categorySelect = document.getElementById("category")
+
+async function loadCategories(){
+
+const { data } = await supabase
+.from("menu_categories")
+.select("*")
+
+categorySelect.innerHTML=""
+
+data.forEach(c=>{
+
+const option=document.createElement("option")
+option.value=c.id
+option.innerText=c.name
+categorySelect.appendChild(option)
+
+})
+
+}
+
+async function loadItem(){
+
+const { data } = await supabase
+.from("menu_items")
+.select("*")
+.eq("id",itemId)
+.single()
+
+document.getElementById("name").value=data.name
+document.getElementById("price").value=data.price
+document.getElementById("description").value=data.description || ""
+document.getElementById("imageUrl").value=data.image_url || ""
+document.getElementById("availability").value=data.is_available
+
+categorySelect.value=data.category_id
+
+}
+
+window.saveItem = async function(){
+
+const name=document.getElementById("name").value
+const category=document.getElementById("category").value
+const price=document.getElementById("price").value
+const description=document.getElementById("description").value
+const image=document.getElementById("imageUrl").value
+const available=document.getElementById("availability").value
+
+await supabase
+.from("menu_items")
+.update({
+name:name,
+category_id:category,
+price:price,
+description:description,
+image_url:image,
+is_available:available
+})
+.eq("id",itemId)
+
+alert("Item updated")
+
+window.location.href="menu-editor.html"
+
+}
+
+loadCategories().then(loadItem)
+
+</script>
+
+</body>
+</html>
