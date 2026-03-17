@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Customer Profile | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+background:#f5f5f5;
+margin:0;
+}
+
+header{
+background:#ff4d4f;
+color:white;
+padding:15px;
+}
+
+.container{
+padding:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+max-width:400px;
+}
+
+input{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+}
+
+button{
+width:100%;
+padding:12px;
+border:none;
+background:#007bff;
+color:white;
+border-radius:4px;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="home.html" style="color:white;text-decoration:none">← Home</a>
+
+<h3>My Profile</h3>
+
+</header>
+
+<div class="container">
+
+<div class="card">
+
+<h3>Customer Details</h3>
+
+<input id="name" placeholder="Full Name">
+
+<input id="phone" placeholder="Phone Number">
+
+<button onclick="saveProfile()">Save Profile</button>
+
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+async function loadProfile(){
+
+const { data:userData } = await supabase.auth.getUser()
+
+if(!userData || !userData.user){
+alert("Login required")
+window.location.href="login.html"
+return
+}
+
+const userId = userData.user.id
+
+const { data } = await supabase
+.from("customers")
+.select("*")
+.eq("auth_user_id",userId)
+.maybeSingle()
+
+if(data){
+
+document.getElementById("name").value = data.name || ""
+document.getElementById("phone").value = data.phone || ""
+
+}
+
+}
+
+window.saveProfile = async function(){
+
+const name = document.getElementById("name").value
+const phone = document.getElementById("phone").value
+
+const { data:userData } = await supabase.auth.getUser()
+
+const userId = userData.user.id
+
+const { data } = await supabase
+.from("customers")
+.select("*")
+.eq("auth_user_id",userId)
+.maybeSingle()
+
+if(data){
+
+await supabase
+.from("customers")
+.update({
+name:name,
+phone:phone
+})
+.eq("auth_user_id",userId)
+
+}else{
+
+await supabase
+.from("customers")
+.insert({
+auth_user_id:userId,
+name:name,
+phone:phone
+})
+
+}
+
+alert("Profile saved")
+
+}
+
+loadProfile()
+
+</script>
+
+</body>
+
+</html>
