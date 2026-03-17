@@ -15,52 +15,41 @@
 
 body{
 font-family:Arial,sans-serif;
-margin:0;
 background:#f5f5f5;
+margin:0;
 }
 
 header{
 background:#ff4d4f;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
 }
 
-.checkout-container{
+.container{
 padding:20px;
 }
 
-.section{
+.card{
 background:white;
-padding:15px;
-margin-bottom:15px;
+padding:20px;
 border-radius:8px;
-box-shadow:0 2px 8px rgba(0,0,0,0.1);
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
 }
 
 input,textarea{
 width:100%;
 padding:10px;
-margin-top:8px;
-border:1px solid #ccc;
-border-radius:5px;
+margin-bottom:10px;
 }
 
 button{
-padding:12px;
 width:100%;
+padding:12px;
 background:#28a745;
-color:white;
 border:none;
-border-radius:6px;
+color:white;
+border-radius:4px;
 cursor:pointer;
-}
-
-.total{
-font-weight:bold;
-margin-top:10px;
 }
 
 </style>
@@ -71,37 +60,27 @@ margin-top:10px;
 
 <header>
 
-<a href="cart.html" style="color:white;text-decoration:none">← Back</a>
+<a href="cart.html" style="color:white;text-decoration:none">← Cart</a>
 
 <h3>Checkout</h3>
 
-<span></span>
-
 </header>
 
-<div class="checkout-container">
+<div class="container">
 
-<div class="section">
+<div class="card">
 
-<h4>Delivery Address</h4>
+<h3>Delivery Address</h3>
 
 <textarea id="address" placeholder="Enter delivery address"></textarea>
 
-</div>
+<input id="phone" placeholder="Phone Number">
 
-<div class="section">
+<h3>Payment</h3>
 
-<h4>Order Summary</h4>
+<p>Cash on Delivery</p>
 
-<div id="orderItems"></div>
-
-<p class="total" id="orderTotal">Total: ₹0</p>
-
-</div>
-
-<div class="section">
-
-<button id="placeOrderBtn">Place Order</button>
+<button onclick="placeOrder()">Confirm Order</button>
 
 </div>
 
@@ -109,63 +88,66 @@ margin-top:10px;
 
 <script type="module">
 
-import { createOrder } from "../shared/js/api.js"
+import { supabase } from "../shared/js/supabase-client.js"
 
-let cart = JSON.parse(localStorage.getItem("cart") || "[]")
+window.placeOrder = async function(){
 
-const orderItemsDiv = document.getElementById("orderItems")
+const address = document.getElementById("address").value
+const phone = document.getElementById("phone").value
+
+if(!address){
+alert("Enter delivery address")
+return
+}
+
+const { data:userData } = await supabase.auth.getUser()
+
+if(!userData || !userData.user){
+alert("Login required")
+return
+}
+
+const cart = JSON.parse(localStorage.getItem("cart") || "[]")
+
+const restaurantId = localStorage.getItem("restaurant_id")
 
 let total = 0
 
-cart.forEach(item => {
-
-total += Number(item.price)
-
-const p = document.createElement("p")
-
-p.innerText = item.name + " - ₹" + item.price
-
-orderItemsDiv.appendChild(p)
-
+cart.forEach(i=>{
+total += i.price * i.qty
 })
 
-document.getElementById("orderTotal").innerText = "Total: ₹" + total
+const { data:order } = await supabase
+.from("orders")
+.insert({
+customer_id:userData.user.id,
+restaurant_id:restaurantId,
+total_amount:total,
+address:address,
+phone:phone,
+status:"pending"
+})
+.select()
+.single()
 
-document.getElementById("placeOrderBtn").onclick = async () => {
+for(const item of cart){
 
-const address = document.getElementById("address").value
-
-if(!address){
-
-alert("Please enter delivery address")
-
-return
-
-}
-
-const orderData = {
-
-address: address,
-items: cart,
-total_amount: total,
-status: "pending"
-
-}
-
-const { data, error } = await createOrder(orderData)
-
-if(error){
-
-alert(error.message)
-return
+await supabase
+.from("order_items")
+.insert({
+order_id:order.id,
+menu_item_id:item.id,
+quantity:item.qty,
+price:item.price
+})
 
 }
 
 localStorage.removeItem("cart")
 
-alert("Order placed successfully!")
+alert("Order placed successfully")
 
-window.location.href="orders-history.html"
+window.location.href="orders.html"
 
 }
 
