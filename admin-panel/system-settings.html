@@ -20,58 +20,36 @@ background:#f5f5f5;
 }
 
 header{
-background:#ff4d4f;
+background:#343a40;
 color:white;
 padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-nav{
-background:white;
-padding:10px;
-display:flex;
-gap:15px;
-border-bottom:1px solid #ddd;
-}
-
-nav a{
-text-decoration:none;
-color:#333;
-font-weight:bold;
 }
 
 .container{
 padding:20px;
-max-width:600px;
-margin:auto;
 }
 
-.section{
+.card{
 background:white;
 padding:20px;
-margin-bottom:20px;
 border-radius:8px;
 box-shadow:0 2px 8px rgba(0,0,0,0.1);
+max-width:400px;
 }
 
 input{
 width:100%;
-padding:10px;
-margin-top:8px;
+padding:8px;
 margin-bottom:12px;
-border:1px solid #ccc;
-border-radius:4px;
 }
 
 button{
 padding:10px 15px;
-background:#28a745;
-color:white;
 border:none;
-border-radius:5px;
+border-radius:4px;
 cursor:pointer;
+background:#007bff;
+color:white;
 }
 
 </style>
@@ -82,45 +60,27 @@ cursor:pointer;
 
 <header>
 
-<h3>System Settings</h3>
+<a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
 
-<a href="dashboard.html" style="color:white;text-decoration:none">Dashboard</a>
+<h3>System Settings</h3>
 
 </header>
 
-<nav>
-
-<a href="restaurants.html">Restaurants</a> <a href="delivery-partners.html">Delivery Partners</a> <a href="orders.html">Orders</a> <a href="customers.html">Customers</a> <a href="reports.html">Reports</a> <a href="system-settings.html">Settings</a>
-
-</nav>
-
 <div class="container">
 
-<div class="section">
+<div class="card">
 
-<h4>Delivery Partner Rate (₹ per km)</h4>
+<h3>Platform Settings</h3>
 
-<input id="dpRate" type="number" placeholder="Enter rate">
+<label>Minimum Order Value</label>
+<input id="mov">
 
-</div>
+<label>Delivery Charge Per KM</label>
+<input id="deliveryCharge">
 
-<div class="section">
-
-<h4>Minimum Order Value (MOV)</h4>
-
-<input id="mov" type="number" placeholder="Enter minimum order value">
+<button onclick="saveSettings()">Save Settings</button>
 
 </div>
-
-<div class="section">
-
-<h4>Maximum Order Limit</h4>
-
-<input id="maxOrder" type="number" placeholder="Enter max order value">
-
-</div>
-
-<button id="saveSettings">Save Settings</button>
 
 </div>
 
@@ -128,34 +88,58 @@ cursor:pointer;
 
 import { supabase } from "../shared/js/supabase-client.js"
 
-const saveBtn = document.getElementById("saveSettings")
+async function loadSettings(){
 
-saveBtn.onclick = async ()=>{
-
-const dpRate = document.getElementById("dpRate").value
-const mov = document.getElementById("mov").value
-const maxOrder = document.getElementById("maxOrder").value
-
-const { error } = await supabase
+const { data } = await supabase
 .from("system_settings")
-.upsert({
+.select("*")
+.limit(1)
+.maybeSingle()
 
-id:1,
-dp_rate:dpRate,
-mov:mov,
-max_order:maxOrder
+if(!data) return
 
+document.getElementById("mov").value = data.minimum_order_value || ""
+document.getElementById("deliveryCharge").value = data.delivery_charge_km || ""
+
+}
+
+window.saveSettings = async function(){
+
+const mov = document.getElementById("mov").value
+const charge = document.getElementById("deliveryCharge").value
+
+const { data } = await supabase
+.from("system_settings")
+.select("*")
+.limit(1)
+.maybeSingle()
+
+if(data){
+
+await supabase
+.from("system_settings")
+.update({
+minimum_order_value: mov,
+delivery_charge_km: charge
+})
+.eq("id",data.id)
+
+}else{
+
+await supabase
+.from("system_settings")
+.insert({
+minimum_order_value: mov,
+delivery_charge_km: charge
 })
 
-if(error){
-alert("Error saving settings")
-console.error(error)
-return
 }
 
 alert("Settings saved")
 
 }
+
+loadSettings()
 
 </script>
 
