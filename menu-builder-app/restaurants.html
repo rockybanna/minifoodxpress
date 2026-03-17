@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Select Restaurant | Menu Builder</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+background:#f5f5f5;
+margin:0;
+}
+
+header{
+background:#007bff;
+color:white;
+padding:15px;
+}
+
+.container{
+padding:20px;
+}
+
+.restaurant{
+background:white;
+padding:15px;
+margin-bottom:10px;
+border-radius:6px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+button{
+margin-top:10px;
+padding:8px 12px;
+border:none;
+background:#28a745;
+color:white;
+border-radius:4px;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<a href="login.html" style="color:white;text-decoration:none">Logout</a>
+
+<h3>Select Restaurant</h3>
+
+</header>
+
+<div class="container" id="restaurantList">
+
+Loading restaurants...
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const list=document.getElementById("restaurantList")
+
+async function loadRestaurants(){
+
+const { data, error } = await supabase
+.from("restaurants")
+.select("*")
+
+if(error){
+list.innerHTML="Error loading restaurants"
+return
+}
+
+list.innerHTML=""
+
+if(!data || data.length===0){
+list.innerHTML="No restaurants found"
+return
+}
+
+data.forEach(r=>{
+
+const div=document.createElement("div")
+
+div.className="restaurant"
+
+div.innerHTML=`
+
+<h3>${r.name}</h3>
+
+<p>${r.address || ""}</p>
+
+<button onclick="openMenu('${r.id}')">
+
+Edit Menu
+
+</button>
+
+`
+
+list.appendChild(div)
+
+})
+
+}
+
+window.openMenu = function(id){
+
+localStorage.setItem("menu_restaurant_id",id)
+
+window.location.href="menu-editor.html"
+
+}
+
+loadRestaurants()
+
+</script>
+
+</body>
+
+</html>
