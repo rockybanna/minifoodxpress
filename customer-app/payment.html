@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Payment | MiniFoodXpress</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+body{
+  font-family:Arial,sans-serif;
+  background:#f5f5f5;
+  margin:0;
+}
+header{
+  background:#ff4d4f;
+  color:white;
+  padding:15px;
+}
+.container{
+  padding:20px;
+}
+.card{
+  background:white;
+  padding:20px;
+  border-radius:8px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.1);
+  text-align:center;
+}
+img{
+  max-width:250px;
+  margin:10px 0;
+}
+input{
+  width:100%;
+  padding:10px;
+  margin:10px 0;
+}
+button{
+  width:100%;
+  padding:12px;
+  background:#28a745;
+  border:none;
+  color:white;
+  border-radius:4px;
+  cursor:pointer;
+}
+</style>
+
+</head>
+
+<body>
+
+<header>
+<h3>Complete Payment</h3>
+</header>
+
+<div class="container">
+
+<div class="card">
+
+<h3>Scan & Pay</h3>
+
+<img id="qrImage" src="" alt="QR Code">
+
+<p id="amount"></p>
+
+<input id="payer_name" placeholder="Your Name">
+<input id="payer_upi" placeholder="Your UPI ID">
+
+<input type="file" id="file">
+
+<button onclick="submitPayment()">Submit Payment</button>
+
+</div>
+
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+import { uploadPaymentProof, createPaymentEntry, getSetting } from "../shared/js/api.js"
+
+// 🔥 GET ORDER ID
+const orderId = localStorage.getItem("order_id")
+
+if(!orderId){
+  alert("Order not found")
+  window.location.href = "home.html"
+}
+
+// 🔥 LOAD ORDER
+const { data:order } = await supabase
+  .from("orders")
+  .select("*")
+  .eq("id", orderId)
+  .single()
+
+document.getElementById("amount").innerText = `Pay ₹${order.total_amount}`
+
+// 🔥 LOAD QR FROM SETTINGS
+const { value:qr } = await getSetting("QR_IMAGE_URL")
+
+if(qr){
+  document.getElementById("qrImage").src = qr
+} else {
+  alert("QR not configured")
+}
+
+// 🚀 SUBMIT PAYMENT
+window.submitPayment = async function(){
+
+  const file = document.getElementById("file").files[0]
+  const payerName = document.getElementById("payer_name").value
+  const payerUpi = document.getElementById("payer_upi").value
+
+  if(!file || !payerName || !payerUpi){
+    alert("Fill all fields")
+    return
+  }
+
+  // 🔥 UPLOAD PROOF
+  const { url, error:uploadError } = await uploadPaymentProof(file, orderId)
+
+  if(uploadError){
+    alert(uploadError.message)
+    return
+  }
+
+  // 🔥 CREATE PAYMENT ENTRY
+  const { error } = await createPaymentEntry({
+    order_id: orderId,
+    proof_image_url: url,
+    payer_name: payerName,
+    payer_upi_id: payerUpi,
+    expected_amount: order.total_amount
+  })
+
+  if(error){
+    alert(error.message)
+    return
+  }
+
+  // 🔥 UPDATE ORDER STATUS
+  await supabase
+    .from("orders")
+    .update({ status: "verification_pending" })
+    .eq("id", orderId)
+
+  alert("Payment submitted for verification")
+
+  window.location.href = "orders.html"
+}
+
+</script>
+
+</body>
+</html>
