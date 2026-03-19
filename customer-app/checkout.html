@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
 
 <meta charset="UTF-8">
@@ -12,46 +10,42 @@
 <link rel="stylesheet" href="../shared/css/main.css">
 
 <style>
-
 body{
-font-family:Arial,sans-serif;
-background:#f5f5f5;
-margin:0;
+  font-family:Arial,sans-serif;
+  background:#f5f5f5;
+  margin:0;
 }
-
 header{
-background:#ff4d4f;
-color:white;
-padding:15px;
+  background:#ff4d4f;
+  color:white;
+  padding:15px;
 }
-
 .container{
-padding:20px;
+  padding:20px;
 }
-
 .card{
-background:white;
-padding:20px;
-border-radius:8px;
-box-shadow:0 2px 10px rgba(0,0,0,0.1);
+  background:white;
+  padding:20px;
+  border-radius:8px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.1);
 }
-
 input,textarea{
-width:100%;
-padding:10px;
-margin-bottom:10px;
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
 }
-
 button{
-width:100%;
-padding:12px;
-background:#28a745;
-border:none;
-color:white;
-border-radius:4px;
-cursor:pointer;
+  width:100%;
+  padding:12px;
+  background:#28a745;
+  border:none;
+  color:white;
+  border-radius:4px;
+  cursor:pointer;
 }
-
+.summary p{
+  margin:5px 0;
+}
 </style>
 
 </head>
@@ -59,11 +53,8 @@ cursor:pointer;
 <body>
 
 <header>
-
 <a href="cart.html" style="color:white;text-decoration:none">← Cart</a>
-
 <h3>Checkout</h3>
-
 </header>
 
 <div class="container">
@@ -73,14 +64,12 @@ cursor:pointer;
 <h3>Delivery Address</h3>
 
 <textarea id="address" placeholder="Enter delivery address"></textarea>
-
 <input id="phone" placeholder="Phone Number">
 
-<h3>Payment</h3>
+<h3>Order Summary</h3>
+<div class="summary" id="summary"></div>
 
-<p>Cash on Delivery</p>
-
-<button onclick="placeOrder()">Confirm Order</button>
+<button onclick="placeOrder()">Proceed to Payment</button>
 
 </div>
 
@@ -89,70 +78,107 @@ cursor:pointer;
 <script type="module">
 
 import { supabase } from "../shared/js/supabase-client.js"
-
-window.placeOrder = async function(){
-
-const address = document.getElementById("address").value
-const phone = document.getElementById("phone").value
-
-if(!address){
-alert("Enter delivery address")
-return
-}
-
-const { data:userData } = await supabase.auth.getUser()
-
-if(!userData || !userData.user){
-alert("Login required")
-return
-}
+import { calculateOrder } from "../shared/js/distance.js"
+import { getSetting } from "../shared/js/api.js"
 
 const cart = JSON.parse(localStorage.getItem("cart") || "[]")
+const restaurant = JSON.parse(localStorage.getItem("restaurant") || "{}")
 
-const restaurantId = localStorage.getItem("restaurant_id")
+// ⚠️ TEMP (later replace with real address GPS)
+const CUSTOMER_LAT = 23.0
+const CUSTOMER_LNG = 72.0
 
-let total = 0
+const REST_LAT = restaurant.latitude || 23.1
+const REST_LNG = restaurant.longitude || 72.1
 
-cart.forEach(i=>{
-total += i.price * i.qty
+let subtotal = 0
+cart.forEach(i => subtotal += i.price * i.qty)
+
+// 🔥 CALCULATE FINAL ORDER
+const result = calculateOrder({
+  subtotal,
+  restaurantFee: restaurant.packaging_fee || 0,
+  lat1: CUSTOMER_LAT,
+  lon1: CUSTOMER_LNG,
+  lat2: REST_LAT,
+  lon2: REST_LNG,
+  surgeMultiplier: 1
 })
 
-const { data:order } = await supabase
-.from("orders")
-.insert({
-customer_id:userData.user.id,
-restaurant_id:restaurantId,
-total_amount:total,
-address:address,
-phone:phone,
-status:"pending"
-})
-.select()
-.single()
-
-for(const item of cart){
-
-await supabase
-.from("order_items")
-.insert({
-order_id:order.id,
-menu_item_id:item.id,
-quantity:item.qty,
-price:item.price
-})
-
+if(result.error){
+  alert(result.error)
 }
 
-localStorage.removeItem("cart")
+document.getElementById("summary").innerHTML = `
+  <p>Subtotal: ₹${subtotal}</p>
+  <p>Delivery: ₹${result.delivery_charge}</p>
+  <p>Discount: -₹${result.discount}</p>
+  <p><b>Total: ₹${result.final_total}</b></p>
+`
 
-alert("Order placed successfully")
+// 🚀 PLACE ORDER
+window.placeOrder = async function(){
 
-window.location.href="orders.html"
+  const address = document.getElementById("address").value
+  const phone = document.getElementById("phone").value
 
+  if(!address || !phone){
+    alert("Enter address and phone")
+    return
+  }
+
+  const { data:userData } = await supabase.auth.getUser()
+
+  if(!userData?.user){
+    alert("Login required")
+    return
+  }
+
+  // 🔥 CREATE ORDER
+  const { data:order, error } = await supabase
+    .from("orders")
+    .insert({
+      customer_id: userData.user.id,
+      restaurant_id: restaurant.id,
+      address: address,
+      phone: phone,
+
+      subtotal: subtotal,
+      delivery_charge: result.delivery_charge,
+      restaurant_fee: restaurant.packaging_fee || 0,
+      offer_discount: result.discount,
+      surge_multiplier: 1,
+      distance_km: result.distance,
+      total_amount: result.final_total,
+
+      status: "payment_pending"
+    })
+    .select()
+    .single()
+
+  if(error){
+    alert(error.message)
+    return
+  }
+
+  // 🔥 INSERT ITEMS
+  for(const item of cart){
+    await supabase.from("order_items").insert({
+      order_id: order.id,
+      menu_item_id: item.id,
+      quantity: item.qty,
+      price: item.price
+    })
+  }
+
+  localStorage.removeItem("cart")
+  localStorage.setItem("order_id", order.id)
+
+  // 👉 GO TO PAYMENT PAGE
+  window.location.href = "payment.html"
 }
 
 </script>
 
 </body>
-
 </html>
