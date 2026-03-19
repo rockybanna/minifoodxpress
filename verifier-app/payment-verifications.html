@@ -10,49 +10,46 @@
 <link rel="stylesheet" href="../shared/css/main.css">
 
 <style>
-
 body{
-font-family:Arial,sans-serif;
-margin:0;
-background:#f5f5f5;
+  font-family:Arial,sans-serif;
+  margin:0;
+  background:#f5f5f5;
 }
-
 header{
-background:#343a40;
-color:white;
-padding:15px;
+  background:#343a40;
+  color:white;
+  padding:15px;
 }
-
 .container{
-padding:20px;
+  padding:20px;
 }
-
 .card{
-background:white;
-padding:15px;
-margin-bottom:10px;
-border-radius:6px;
-box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  background:white;
+  padding:15px;
+  margin-bottom:10px;
+  border-radius:6px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
-
 button{
-padding:8px 12px;
-border:none;
-border-radius:4px;
-cursor:pointer;
-margin-right:5px;
+  padding:8px 12px;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  margin-right:5px;
 }
-
 .verify{
-background:#28a745;
-color:white;
+  background:#28a745;
+  color:white;
 }
-
 .fail{
-background:#dc3545;
-color:white;
+  background:#dc3545;
+  color:white;
 }
-
+img{
+  max-width:200px;
+  display:block;
+  margin:10px 0;
+}
 </style>
 
 </head>
@@ -60,95 +57,102 @@ color:white;
 <body>
 
 <header>
-
 <a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
-
 <h3>Payment Verifications</h3>
-
 </header>
 
 <div class="container">
-
-<div id="paymentsList">
-Loading payments...
-</div>
-
+<div id="paymentsList">Loading payments...</div>
 </div>
 
 <script type="module">
 
 import { supabase } from "../shared/js/supabase-client.js"
+import { verifyPayment, rejectPayment } from "../shared/js/api.js"
 
-const list=document.getElementById("paymentsList")
+const list = document.getElementById("paymentsList")
 
+// 🔥 LOAD PAYMENTS
 async function loadPayments(){
 
-const { data,error } = await supabase
-.from("payments")
-.select("*")
-.eq("status","pending")
+  const { data, error } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("verification_status", "verification_pending")
+    .order("created_at", { ascending: false })
 
-if(error){
-list.innerHTML="Error loading payments"
-return
+  if(error){
+    list.innerHTML = "Error loading payments"
+    return
+  }
+
+  if(!data || data.length === 0){
+    list.innerHTML = "No pending payments"
+    return
+  }
+
+  list.innerHTML = ""
+
+  data.forEach(p => {
+
+    const div = document.createElement("div")
+    div.className = "card"
+
+    div.innerHTML = `
+      <h3>₹${p.expected_amount}</h3>
+      <p><b>Order:</b> ${p.order_id}</p>
+      <p><b>Name:</b> ${p.payer_name}</p>
+      <p><b>UPI:</b> ${p.payer_upi_id}</p>
+
+      <img src="${p.proof_image_url}" />
+
+      <button class="verify" onclick="approve('${p.id}', '${p.order_id}')">
+        Approve
+      </button>
+
+      <button class="fail" onclick="reject('${p.id}', '${p.order_id}')">
+        Reject
+      </button>
+    `
+
+    list.appendChild(div)
+  })
 }
 
-list.innerHTML=""
+// ✅ APPROVE
+window.approve = async function(paymentId, orderId){
 
-if(!data || data.length===0){
-list.innerHTML="No pending payments"
-return
+  const { data:userData } = await supabase.auth.getUser()
+  const verifierId = userData?.user?.id
+
+  await verifyPayment(paymentId, verifierId)
+
+  // 🔥 UPDATE ORDER → SEND TO RESTAURANT
+  await supabase
+    .from("orders")
+    .update({ status: "verified" })
+    .eq("id", orderId)
+
+  alert("Payment verified")
+  loadPayments()
 }
 
-data.forEach(p=>{
+// ❌ REJECT
+window.reject = async function(paymentId, orderId){
 
-const div=document.createElement("div")
-div.className="card"
+  const { data:userData } = await supabase.auth.getUser()
+  const verifierId = userData?.user?.id
 
-div.innerHTML=`
+  await rejectPayment(paymentId, verifierId)
 
-<h3>Payment ₹${p.amount}</h3>
+  // 🔥 UPDATE ORDER → REFUND FLOW
+  await supabase
+    .from("orders")
+    .update({ status: "refund_pending" })
+    .eq("id", orderId)
 
-<p>Order ID: ${p.order_id}</p>
-
-<p>Method: ${p.payment_method}</p>
-
-<button class="verify" onclick="approvePayment('${p.id}')">
-Verify
-</button>
-
-<button class="fail" onclick="rejectPayment('${p.id}')">
-Fail
-</button>
-
-`
-
-list.appendChild(div)
-
-})
-
-}
-
-window.approvePayment = async function(id){
-
-await supabase
-.from("payments")
-.update({ status:"verified" })
-.eq("id",id)
-
-loadPayments()
-
-}
-
-window.rejectPayment = async function(id){
-
-await supabase
-.from("payments")
-.update({ status:"failed" })
-.eq("id",id)
-
-loadPayments()
-
+  alert("Payment rejected → refund pending")
+  loadPayments()
 }
 
 loadPayments()
