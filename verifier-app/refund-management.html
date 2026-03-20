@@ -10,49 +10,45 @@
 <link rel="stylesheet" href="../shared/css/main.css">
 
 <style>
-
 body{
-font-family:Arial,sans-serif;
-margin:0;
-background:#f5f5f5;
+  font-family:Arial,sans-serif;
+  margin:0;
+  background:#f5f5f5;
 }
-
 header{
-background:#343a40;
-color:white;
-padding:15px;
+  background:#343a40;
+  color:white;
+  padding:15px;
 }
-
 .container{
-padding:20px;
+  padding:20px;
 }
-
 .card{
-background:white;
-padding:15px;
-margin-bottom:10px;
-border-radius:6px;
-box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  background:white;
+  padding:15px;
+  margin-bottom:10px;
+  border-radius:6px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
-
 button{
-padding:8px 12px;
-border:none;
-border-radius:4px;
-cursor:pointer;
-margin-right:5px;
+  padding:8px 12px;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  margin-top:10px;
 }
-
 .approve{
-background:#28a745;
-color:white;
+  background:#28a745;
+  color:white;
 }
-
-.reject{
-background:#dc3545;
-color:white;
+img{
+  max-width:200px;
+  display:block;
+  margin:10px 0;
 }
-
+input{
+  margin-top:10px;
+}
 </style>
 
 </head>
@@ -60,95 +56,102 @@ color:white;
 <body>
 
 <header>
-
 <a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
-
-<h3>Refund Requests</h3>
-
+<h3>Refund Management</h3>
 </header>
 
 <div class="container">
-
-<div id="refundList">
-Loading refunds...
-</div>
-
+<div id="refundList">Loading refunds...</div>
 </div>
 
 <script type="module">
 
 import { supabase } from "../shared/js/supabase-client.js"
+import { uploadRefundProof, markRefunded } from "../shared/js/api.js"
 
-const list=document.getElementById("refundList")
+const list = document.getElementById("refundList")
 
+// 🔥 LOAD REFUND PENDING PAYMENTS
 async function loadRefunds(){
 
-const { data,error } = await supabase
-.from("payments")
-.select("*")
-.eq("refund_status","requested")
+  const { data, error } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("verification_status", "rejected")
+    .order("created_at", { ascending: false })
 
-if(error){
-list.innerHTML="Error loading refunds"
-return
+  if(error){
+    list.innerHTML = "Error loading refunds"
+    return
+  }
+
+  if(!data || data.length === 0){
+    list.innerHTML = "No refund pending"
+    return
+  }
+
+  list.innerHTML = ""
+
+  data.forEach(p => {
+
+    const div = document.createElement("div")
+    div.className = "card"
+
+    div.innerHTML = `
+      <h3>Refund ₹${p.expected_amount}</h3>
+
+      <p><b>Order:</b> ${p.order_id}</p>
+      <p><b>Name:</b> ${p.payer_name}</p>
+      <p><b>UPI:</b> ${p.payer_upi_id}</p>
+
+      <p><b>Payment Proof:</b></p>
+      <img src="${p.proof_image_url}" />
+
+      <p><b>Upload Refund Proof:</b></p>
+      <input type="file" id="file_${p.id}" />
+
+      <button class="approve" onclick="processRefund('${p.id}', '${p.order_id}')">
+        Mark Refunded
+      </button>
+    `
+
+    list.appendChild(div)
+  })
 }
 
-list.innerHTML=""
+// 🚀 PROCESS REFUND
+window.processRefund = async function(paymentId, orderId){
 
-if(!data || data.length===0){
-list.innerHTML="No refund requests"
-return
-}
+  const file = document.getElementById(`file_${paymentId}`).files[0]
 
-data.forEach(p=>{
+  if(!file){
+    alert("Upload refund proof")
+    return
+  }
 
-const div=document.createElement("div")
-div.className="card"
+  const { data:userData } = await supabase.auth.getUser()
+  const verifierId = userData?.user?.id
 
-div.innerHTML=`
+  // 🔥 UPLOAD REFUND PROOF
+  const { url, error:uploadError } = await uploadRefundProof(file, orderId)
 
-<h3>Refund ₹${p.amount}</h3>
+  if(uploadError){
+    alert(uploadError.message)
+    return
+  }
 
-<p>Order ID: ${p.order_id}</p>
+  // 🔥 MARK REFUNDED
+  await markRefunded(paymentId, verifierId, url)
 
-<p>Payment Method: ${p.payment_method}</p>
+  // 🔥 UPDATE ORDER STATUS
+  await supabase
+    .from("orders")
+    .update({ status: "refunded" })
+    .eq("id", orderId)
 
-<button class="approve" onclick="approveRefund('${p.id}')">
-Approve Refund
-</button>
+  alert("Refund completed")
 
-<button class="reject" onclick="rejectRefund('${p.id}')">
-Reject Refund
-</button>
-
-`
-
-list.appendChild(div)
-
-})
-
-}
-
-window.approveRefund = async function(id){
-
-await supabase
-.from("payments")
-.update({ refund_status:"approved" })
-.eq("id",id)
-
-loadRefunds()
-
-}
-
-window.rejectRefund = async function(id){
-
-await supabase
-.from("payments")
-.update({ refund_status:"rejected" })
-.eq("id",id)
-
-loadRefunds()
-
+  loadRefunds()
 }
 
 loadRefunds()
