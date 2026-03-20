@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Incoming Orders | Delivery</title>
+
+<link rel="stylesheet" href="../shared/css/main.css">
+
+<style>
+body{
+  font-family:Arial,sans-serif;
+  margin:0;
+  background:#f5f5f5;
+}
+header{
+  background:#007bff;
+  color:white;
+  padding:15px;
+}
+.container{
+  padding:20px;
+}
+.card{
+  background:white;
+  padding:15px;
+  margin-bottom:10px;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+button{
+  padding:8px 12px;
+  border:none;
+  background:#28a745;
+  color:white;
+  border-radius:4px;
+  cursor:pointer;
+}
+</style>
+
+</head>
+
+<body>
+
+<header>
+<h3>Incoming Orders</h3>
+</header>
+
+<div class="container" id="ordersList">
+Loading orders...
+</div>
+
+<script type="module">
+
+import { supabase } from "../shared/js/supabase-client.js"
+
+const container = document.getElementById("ordersList")
+
+let currentDP = null
+
+// 🔥 GET CURRENT DP
+async function loadDP(){
+  const { data:userData } = await supabase.auth.getUser()
+  const user = userData?.user
+
+  if(!user){
+    alert("Login required")
+    return
+  }
+
+  const { data } = await supabase
+    .from("delivery_partners")
+    .select("*")
+    .eq("auth_user_id", user.id)
+    .single()
+
+  currentDP = data
+}
+
+// 🔥 CHECK IF DP CAN ACCEPT
+function canAccept(){
+  return (
+    currentDP.is_online &&
+    currentDP.current_orders < 1 &&
+    currentDP.waiting_orders < 1
+  )
+}
+
+// 🔥 LOAD ORDERS (BROADCAST)
+async function loadOrders(){
+
+  if(!currentDP) return
+
+  if(!canAccept()){
+    container.innerHTML = "<p>You are busy</p>"
+    return
+  }
+
+  const now = new Date()
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("status", "preparing")
+
+  if(error){
+    container.innerHTML = "Error loading orders"
+    return
+  }
+
+  const eligible = data.filter(o => {
+    if(!o.ready_at) return false
+
+    const readyTime = new Date(o.ready_at)
+    const broadcastTime = new Date(readyTime.getTime() - 10 * 60000)
+
+    return now >= broadcastTime
+  })
+
+  if(eligible.length === 0){
+    container.innerHTML = "<p>No orders available</p>"
+    return
+  }
+
+  container.innerHTML = ""
+
+  eligible.forEach(order => {
+
+    const div = document.createElement("div")
+    div.className = "card"
+
+    div.innerHTML = `
+      <h3>Order #${order.id}</h3>
+      <p>Total: ₹${order.total_amount}</p>
+      <p>Address: ${order.address}</p>
+      <button onclick="acceptOrder('${order.id}')">Accept</button>
+    `
+
+    container.appendChild(div)
+  })
+}
+
+// ✅ ACCEPT ORDER
+window.acceptOrder = async function(orderId){
+
+  // 🔥 CHECK AGAIN (FIRST ACCEPT WINS)
+  const { data:order } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .single()
+
+  if(order.delivery_partner_id){
+    alert("Already assigned")
+    return
+  }
+
+  // 🔥 ASSIGN ORDER
+  await supabase
+    .from("orders")
+    .update({
+      delivery_partner_id: currentDP.id,
+      status: "assigned",
+      assigned_at: new Date().toISOString()
+    })
+    .eq("id", orderId)
+
+  // 🔥 UPDATE DP STATE
+  let updates = {}
+
+  if(currentDP.current_orders === 0){
+    updates.current_orders = 1
+  } else {
+    updates.waiting_orders = 1
+  }
+
+  await supabase
+    .from("delivery_partners")
+    .update(updates)
+    .eq("id", currentDP.id)
+
+  alert("Order accepted")
+
+  loadDP()
+  loadOrders()
+}
+
+// 🔁 BROADCAST LOOP (EVERY 30 SEC)
+setInterval(loadOrders, 30000)
+
+await loadDP()
+loadOrders()
+
+</script>
+
+</body>
+</html>
