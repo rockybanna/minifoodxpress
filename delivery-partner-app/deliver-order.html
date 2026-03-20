@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
 
 <meta charset="UTF-8">
@@ -12,43 +10,40 @@
 <link rel="stylesheet" href="../shared/css/main.css">
 
 <style>
-
 body{
-font-family:Arial,sans-serif;
-margin:0;
-background:#f5f5f5;
+  font-family:Arial,sans-serif;
+  margin:0;
+  background:#f5f5f5;
 }
-
 header{
-background:#ff4d4f;
-color:white;
-padding:15px;
+  background:#ff4d4f;
+  color:white;
+  padding:15px;
 }
-
 .container{
-padding:20px;
+  padding:20px;
 }
-
 .card{
-background:white;
-padding:20px;
-border-radius:8px;
-box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  background:white;
+  padding:20px;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
-
 button{
-padding:10px 15px;
-border:none;
-border-radius:4px;
-cursor:pointer;
-margin-top:10px;
-color:white;
+  padding:10px 15px;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  margin-top:10px;
+  color:white;
+  width:100%;
 }
-
+.pickup{
+  background:#007bff;
+}
 .complete{
-background:#28a745;
+  background:#28a745;
 }
-
 </style>
 
 </head>
@@ -56,21 +51,12 @@ background:#28a745;
 <body>
 
 <header>
-
 <a href="dashboard.html" style="color:white;text-decoration:none">← Dashboard</a>
-
-<h3>Complete Delivery</h3>
-
+<h3>Delivery</h3>
 </header>
 
 <div class="container">
-
-<div class="card" id="orderDetails">
-
-Loading order...
-
-</div>
-
+<div class="card" id="orderDetails">Loading order...</div>
 </div>
 
 <script type="module">
@@ -83,59 +69,122 @@ const orderId = params.get("id")
 const container = document.getElementById("orderDetails")
 
 let orderData = null
+let currentDP = null
 
+// 🔥 LOAD DP
+async function loadDP(){
+  const { data:userData } = await supabase.auth.getUser()
+  const user = userData?.user
+
+  const { data } = await supabase
+    .from("delivery_partners")
+    .select("*")
+    .eq("auth_user_id", user.id)
+    .single()
+
+  currentDP = data
+}
+
+// 🔥 LOAD ORDER
 async function loadOrder(){
 
-const { data, error } = await supabase
-.from("orders")
-.select("*")
-.eq("id",orderId)
-.single()
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .single()
 
-if(error){
-container.innerHTML="Order load error"
-return
+  if(error){
+    container.innerHTML = "Order load error"
+    return
+  }
+
+  orderData = data
+
+  let actionButton = ""
+
+  if(data.status === "assigned"){
+    actionButton = `
+      <button class="pickup" onclick="markPicked()">
+        Mark Picked
+      </button>
+    `
+  }
+
+  if(data.status === "picked"){
+    actionButton = `
+      <button class="complete" onclick="completeDelivery()">
+        Confirm Delivery
+      </button>
+    `
+  }
+
+  container.innerHTML = `
+    <h3>Order #${data.id}</h3>
+    <p><b>Total:</b> ₹${data.total_amount}</p>
+    <p><b>Address:</b> ${data.address}</p>
+    <p><b>Status:</b> ${data.status}</p>
+    ${actionButton}
+  `
 }
 
-orderData = data
+// 🚚 MARK PICKED
+window.markPicked = async function(){
 
-container.innerHTML = `
+  await supabase
+    .from("orders")
+    .update({
+      status: "picked",
+      picked_at: new Date().toISOString()
+    })
+    .eq("id", orderId)
 
-<h3>Order #${data.id}</h3>
+  alert("Order picked")
 
-<p>Total: ₹${data.total_amount}</p>
-
-<p>Delivery Address: ${data.address}</p>
-
-<button class="complete" onclick="completeDelivery()">
-
-Confirm Delivery
-
-</button>
-
-`
-
+  loadOrder()
 }
 
+// ✅ COMPLETE DELIVERY
 window.completeDelivery = async function(){
 
-await supabase
-.from("orders")
-.update({
-status:"delivered"
-})
-.eq("id",orderId)
+  await supabase
+    .from("orders")
+    .update({
+      status: "delivered",
+      delivered_at: new Date().toISOString()
+    })
+    .eq("id", orderId)
 
-alert("Delivery completed")
+  // 🔥 UPDATE DP LOAD (FREE SLOT)
+  let updates = {}
 
-window.location.href="history.html"
+  if(currentDP.current_orders === 1){
+    updates.current_orders = 0
 
+    // move waiting → active
+    if(currentDP.waiting_orders === 1){
+      updates.current_orders = 1
+      updates.waiting_orders = 0
+    }
+
+  } else if(currentDP.waiting_orders === 1){
+    updates.waiting_orders = 0
+  }
+
+  await supabase
+    .from("delivery_partners")
+    .update(updates)
+    .eq("id", currentDP.id)
+
+  alert("Delivery completed")
+
+  window.location.href = "history.html"
 }
 
+await loadDP()
 loadOrder()
 
 </script>
 
 </body>
-
 </html>
